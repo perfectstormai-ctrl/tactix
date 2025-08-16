@@ -1,30 +1,12 @@
-import http from 'node:http';
-import { URL } from 'node:url';
+const http = require('node:http');
+const { URL } = require('node:url');
 
-export interface Incident {
-  id: number;
-  title: string;
-  description: string | null;
-  severity: string;
-  status: string;
-  comments: string[];
-  createdAt: Date;
-}
-
-interface IncidentEvent {
-  id: number;
-  incidentId: number;
-  type: string;
-  payload: any;
-  createdAt: Date;
-}
-
-const incidents: Incident[] = [];
-const events: IncidentEvent[] = [];
+let incidents = [];
+let events = [];
 let nextIncidentId = 1;
 let nextEventId = 1;
 
-async function readBody(req: http.IncomingMessage): Promise<any> {
+function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (chunk) => (data += chunk));
@@ -39,13 +21,13 @@ async function readBody(req: http.IncomingMessage): Promise<any> {
   });
 }
 
-function json(res: http.ServerResponse, code: number, body: any) {
+function json(res, code, body) {
   res.statusCode = code;
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify(body));
 }
 
-export function createServer() {
+function createServer() {
   return http.createServer(async (req, res) => {
     if (!req.url) return json(res, 404, {});
     const url = new URL(req.url, 'http://localhost');
@@ -59,7 +41,7 @@ export function createServer() {
       if (!body || !body.title || !body.severity) {
         return json(res, 400, { error: 'title and severity required' });
       }
-      const incident: Incident = {
+      const incident = {
         id: nextIncidentId++,
         title: body.title,
         description: body.description ?? null,
@@ -68,7 +50,7 @@ export function createServer() {
         comments: [],
         createdAt: new Date(),
       };
-      const event: IncidentEvent = {
+      const event = {
         id: nextEventId++,
         incidentId: incident.id,
         type: 'CREATED',
@@ -111,7 +93,7 @@ export function createServer() {
       if (!body || !body.comment) return json(res, 400, { error: 'comment required' });
       const incident = incidents.find((i) => i.id === id);
       if (!incident) return json(res, 404, {});
-      const event: IncidentEvent = {
+      const event = {
         id: nextEventId++,
         incidentId: id,
         type: 'COMMENT_ADDED',
@@ -130,7 +112,7 @@ export function createServer() {
       if (!body || !body.status) return json(res, 400, { error: 'status required' });
       const incident = incidents.find((i) => i.id === id);
       if (!incident) return json(res, 404, {});
-      const event: IncidentEvent = {
+      const event = {
         id: nextEventId++,
         incidentId: id,
         type: 'STATUS_CHANGED',
@@ -157,3 +139,5 @@ function main() {
 if (require.main === module) {
   main();
 }
+
+module.exports = { createServer };

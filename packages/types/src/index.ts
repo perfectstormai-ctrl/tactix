@@ -1,5 +1,9 @@
 export interface Incident {
   id: number;
-  description: string;
-  reportedAt: Date;
+  title: string;
+  description: string | null;
+  severity: string;
+  status: string;
+  comments: string[];
+  createdAt: Date;
 }
