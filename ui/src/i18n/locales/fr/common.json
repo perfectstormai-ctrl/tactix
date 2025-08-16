@@ -20,6 +20,12 @@
     "send": "Envoyer",
     "typingPlaceholder": "Discussion..."
   },
+  "eng": {
+    "title": "Chat d'ingénierie (ENGNET)",
+    "unofficial": "Non officiel",
+    "send": "Envoyer",
+    "promote": "Promouvoir au journal"
+  },
   "global": {
     "loading": "Chargement…",
     "error": "Une erreur est survenue.",
