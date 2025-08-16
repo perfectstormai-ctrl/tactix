@@ -32,6 +32,7 @@ services:
       - ./ops/env/warlog.env
     depends_on:
       - postgres
+      - opensearch
   tak-ingest-svc:
     build: ./services/tak-ingest-svc
     env_file:
