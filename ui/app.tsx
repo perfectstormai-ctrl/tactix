@@ -1,9 +1,15 @@
 // React entry point for TACTIX UI
 // Uses Tailwind CSS for styling
 
+import LanguageSwitcher from './src/components/LanguageSwitcher.tsx';
+import i18n from './src/i18n/index.ts';
+import { formatTime } from './src/i18n/format.ts';
+
 const { useEffect, useState } = React;
+const { useTranslation, I18nextProvider } = ReactI18next;
 
 function App() {
+  const { t } = useTranslation();
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [refreshToken, setRefreshToken] = useState(
     localStorage.getItem('refreshToken') || ''
@@ -50,7 +56,17 @@ function App() {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-xl font-bold">TACTIX</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl font-bold">TACTIX</h1>
+        <div className="flex items-center gap-4">
+          <nav className="hidden sm:flex gap-4 text-sm">
+            <span>{t('nav.warlog')}</span>
+            <span>{t('nav.quickWarlogEntry')}</span>
+            <span>{t('nav.liveChat')}</span>
+          </nav>
+          <LanguageSwitcher />
+        </div>
+      </div>
       {view === 'login' && <Login onLogin={handleLogin} />}
       {view === 'list' && (
         <IncidentList
@@ -117,6 +133,7 @@ function Login({ onLogin }) {
 }
 
 function IncidentList({ token, onSelect, onLogout }) {
+  const { t } = useTranslation();
   const [incidents, setIncidents] = useState([]);
   const [title, setTitle] = useState('');
   const [severity, setSeverity] = useState('');
@@ -171,12 +188,12 @@ function IncidentList({ token, onSelect, onLogout }) {
       <form onSubmit={search} className="flex gap-2">
         <input
           className="border rounded p-1 flex-1"
-          placeholder="search"
+          placeholder={t('global.search')}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
         <button className="bg-gray-200 px-2 rounded" type="submit">
-          Search
+          {t('global.search')}
         </button>
       </form>
       <ul className="space-y-1">
@@ -227,6 +244,7 @@ function IncidentList({ token, onSelect, onLogout }) {
 }
 
 function IncidentDetail({ token, incidentId, onBack }) {
+  const { t } = useTranslation();
   const [incident, setIncident] = useState(null);
   const [comment, setComment] = useState('');
   const [warlog, setWarlog] = useState([]);
@@ -335,40 +353,52 @@ function IncidentDetail({ token, incidentId, onBack }) {
       {incident && (
         <div>
           <h2 className="text-lg font-semibold">{incident.title}</h2>
-          <p>Severity: {incident.severity}</p>
-          <p>Status: {incident.status}</p>
+          <p>
+            {t('global.severity')}: {incident.severity}
+          </p>
+          <p>
+            {t('global.status')}: {incident.status}
+          </p>
         </div>
       )}
       <div>
-        <h3 className="font-semibold">Warlog</h3>
+        <h3 className="font-semibold">{t('warlog.title')}</h3>
         <div className="bg-black text-green-200 p-2 rounded text-xs h-64 overflow-y-auto">
+          {warlog.length === 0 && <div>{t('warlog.empty')}</div>}
           {warlog.map((e, idx) => (
             <div
               key={idx}
               className="grid grid-cols-[auto_auto_1fr] gap-2 mb-1 whitespace-pre-wrap"
             >
-              <div className="text-gray-400">{e.time}</div>
+              <div className="text-gray-400">{e.time ? formatTime(new Date(e.time), i18n.language) : ''}</div>
               <div className="font-bold">{e.title}</div>
               <div>{e.text}</div>
             </div>
           ))}
         </div>
       </div>
-      <form onSubmit={submit} className="flex gap-2">
-        <input
-          className="border rounded p-1 flex-1"
-          placeholder="Add comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-        />
-        <button className="bg-blue-600 text-white px-3 rounded" type="submit">
-          Send
-        </button>
+      <form onSubmit={submit} className="flex flex-col gap-2">
+        <h3 className="font-semibold">{t('warlog.quickEntryTitle')}</h3>
+        <div className="flex gap-2">
+          <input
+            className="border rounded p-1 flex-1"
+            placeholder={t('chat.typingPlaceholder')}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+          />
+          <button className="bg-blue-600 text-white px-3 rounded" type="submit">
+            {t('chat.send')}
+          </button>
+        </div>
       </form>
     </div>
   );
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(
+  <I18nextProvider i18n={i18n}>
+    <App />
+  </I18nextProvider>
+);
 

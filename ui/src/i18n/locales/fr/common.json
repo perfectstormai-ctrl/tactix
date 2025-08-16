@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "warlog": "Journal de guerre",
+    "quickWarlogEntry": "Entrée rapide de journal",
+    "liveChat": "Chat en direct",
+    "save": "Enregistrer",
+    "chatPlaceholder": "Discussion...",
+    "language": "Langue",
+    "english": "Anglais",
+    "french": "Français"
+  },
+  "warlog": {
+    "title": "Journal de guerre",
+    "empty": "Aucune entrée pour le moment.",
+    "quickEntryTitle": "Entrée rapide au journal"
+  },
+  "chat": {
+    "title": "Chat en direct",
+    "empty": "Aucun message pour le moment.",
+    "send": "Envoyer",
+    "typingPlaceholder": "Discussion..."
+  },
+  "global": {
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue.",
+    "search": "Recherche",
+    "status": "Statut",
+    "severity": "Gravité"
+  }
+}
