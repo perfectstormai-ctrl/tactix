@@ -72,24 +72,15 @@
             <h2 class="text-lg font-semibold">Warlog</h2>
             <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
           </div>
-          <ul class="space-y-4 text-sm">
-            <li>
-              <div class="font-medium">Initial Report <span class="text-xs text-gray-500">0834Z - RSM Smith</span></div>
-              <p class="text-gray-700">We have received no further communication from PNRs under Rapp Training after the second last volley.</p>
-            </li>
-            <li>
-              <div class="font-medium">EFDC Report <span class="text-xs text-gray-500">0847Z - LT Coolbreeze</span></div>
-              <p class="text-gray-700">Over the last 24 hours, various reconnaissance operations have reportedly been seen 40 miles south of YK and the 35th Bn might arrive by 08:25 tomorrow for friendly, as per the latest intel.</p>
-            </li>
-          </ul>
+          <ul id="warlog-list" class="space-y-4 text-sm"></ul>
         </section>
 
         <div class="flex gap-4">
           <section class="flex-1 bg-white rounded shadow p-4">
             <h2 class="text-lg font-semibold mb-2">Quick Warlog Entry</h2>
-            <textarea class="w-full h-32 border rounded p-2 text-sm" placeholder="Enter log entry..."></textarea>
+            <textarea id="warlog-text" class="w-full h-32 border rounded p-2 text-sm" placeholder="Enter log entry..."></textarea>
             <div class="mt-2 text-right">
-              <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
+              <button id="warlog-save" class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
             </div>
           </section>
           <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
@@ -99,7 +90,7 @@
           </section>
         </div>
       </div>
-    </main>
+    <main>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -122,6 +113,35 @@
         });
       });
     </script>
+  <script>
+    async function loadWarlog() {
+      const res = await fetch('/warlog/entries');
+      const entries = await res.json();
+      const list = document.getElementById('warlog-list');
+      list.innerHTML = entries.map(e => `
+        <li>
+          <div class="font-medium"><span class="text-xs text-gray-500">${new Date(e.created_at).toLocaleString()} - ${e.author}</span></div>
+          <p class="text-gray-700">${e.content}</p>
+        </li>
+      `).join('');
+    }
+
+    document.getElementById('warlog-save').addEventListener('click', async () => {
+      const textarea = document.getElementById('warlog-text');
+      const content = textarea.value.trim();
+      if (!content) return;
+      await fetch('/warlog/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      textarea.value = '';
+      loadWarlog();
+    });
+
+    loadWarlog();
+  </script>
+</main>
   </body>
 </html>
 
