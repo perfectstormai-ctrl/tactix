@@ -1,9 +1,5 @@
-export type Role = 'READ' | 'ASSIGN' | 'WRITE' | 'APPROVE';
-
-export interface AssignmentRow {
-  user_upn: string;
-  active: boolean;
-}
+export type Role = 'VIEWER' | 'EDITOR' | 'IMO' | 'ADMIN';
+export type Action = 'READ' | 'WRITE' | 'ASSIGN' | 'ADMIN';
 
 export interface RoleGrantRow {
   user_upn: string;
@@ -17,12 +13,27 @@ const READ_SUFFIXES = (process.env.RBAC_READ_SUFFIXES || 'READ,VIEW,ALL')
   .map((s) => s.trim())
   .filter(Boolean);
 
-const IMO_SUFFIX = process.env.RBAC_IMO_SUFFIX || 'IMO';
+function escalate(roles: Set<Role>, role: Role) {
+  if (role === 'ADMIN') {
+    roles.add('ADMIN');
+    roles.add('IMO');
+    roles.add('EDITOR');
+    roles.add('VIEWER');
+  } else if (role === 'IMO') {
+    roles.add('IMO');
+    roles.add('EDITOR');
+    roles.add('VIEWER');
+  } else if (role === 'EDITOR') {
+    roles.add('EDITOR');
+    roles.add('VIEWER');
+  } else if (role === 'VIEWER') {
+    roles.add('VIEWER');
+  }
+}
 
 export function effective(
   user: { upn: string; ad_groups: string[] },
   operationCode: string,
-  assignments: AssignmentRow[],
   roleGrants: RoleGrantRow[]
 ): { roles: Set<Role> } {
   const roles: Set<Role> = new Set();
@@ -31,26 +42,36 @@ export function effective(
 
   for (const suffix of READ_SUFFIXES) {
     if (groups.includes(`${op}_${suffix}`)) {
-      roles.add('READ');
+      escalate(roles, 'VIEWER');
       break;
     }
   }
 
-  if (groups.includes(`${op}_${IMO_SUFFIX}`)) {
-    roles.add('READ');
-    roles.add('ASSIGN');
-  }
-
-  if (assignments.some((a) => a.user_upn === user.upn && a.active)) {
-    roles.add('READ');
-  }
-
   for (const g of roleGrants) {
     if (g.user_upn === user.upn) {
-      roles.add(g.role);
+      escalate(roles, g.role);
     }
   }
 
   return { roles };
 }
 
+export function can(roles: Set<Role>, action: Action): boolean {
+  switch (action) {
+    case 'READ':
+      return (
+        roles.has('VIEWER') ||
+        roles.has('EDITOR') ||
+        roles.has('IMO') ||
+        roles.has('ADMIN')
+      );
+    case 'WRITE':
+      return roles.has('EDITOR') || roles.has('IMO') || roles.has('ADMIN');
+    case 'ASSIGN':
+      return roles.has('IMO') || roles.has('ADMIN');
+    case 'ADMIN':
+      return roles.has('ADMIN');
+    default:
+      return false;
+  }
+}
