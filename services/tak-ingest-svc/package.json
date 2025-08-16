@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'no build'",
     "start": "node index.js",
     "test": "echo \"No tests\""
   },

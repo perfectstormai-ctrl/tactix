@@ -7,42 +7,58 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - auth-service
-      - incident-svc
-      - realtime-svc
-      - warlog-svc
-      - tak-ingest-svc
-      - ui
-      - eng-svc
+      auth-service:
+        condition: service_healthy
+      incident-svc:
+        condition: service_healthy
+      realtime-svc:
+        condition: service_healthy
+      warlog-svc:
+        condition: service_healthy
+      tak-ingest-svc:
+        condition: service_healthy
+      ui:
+        condition: service_healthy
+      eng-svc:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     env_file:
       - ./ops/env/auth.env
     ports:
       - "3001:3001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   incident-svc:
-    build: ./services/incident-svc
+    build:
+      context: .
+      dockerfile: services/incident-svc/Dockerfile
     env_file:
       - ./ops/env/incident.env
     depends_on:
-      - postgres
-      - opensearch
-      - minio
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "3002:3002"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   warlog-svc:
     build: ./services/warlog-svc
     env_file:
@@ -56,28 +72,39 @@ services:
       timeout: 5s
       retries: 5
   tak-ingest-svc:
-    build: ./services/tak-ingest-svc
+    build:
+      context: .
+      dockerfile: services/tak-ingest-svc/Dockerfile
     env_file:
       - ./ops/env/tak.env
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "3004:3004"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   realtime-svc:
-    build: ./services/realtime-svc
+    build:
+      context: .
+      dockerfile: services/realtime-svc/Dockerfile
     env_file:
       - ./ops/env/realtime.env
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+    ports:
+      - "3003:3003"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   eng-svc:
     build: ./services/eng-svc
     env_file:
@@ -91,7 +118,14 @@ services:
       timeout: 5s
       retries: 5
   ui:
-    build: ./ui
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
   nats:
     image: nats:2
     ports:
@@ -106,6 +140,11 @@ services:
       POSTGRES_USER: tactix
       POSTGRES_PASSWORD: tactix
       POSTGRES_DB: tactix
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tactix -d tactix"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./ops/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro

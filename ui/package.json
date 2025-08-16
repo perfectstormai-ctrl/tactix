@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build": "echo 'no build'",
     "start": "node server.js",
     "test": "node tests/i18n.test.js"
   },
