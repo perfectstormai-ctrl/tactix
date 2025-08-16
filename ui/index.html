@@ -94,16 +94,34 @@
           </section>
           <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
             <h2 class="text-lg font-semibold mb-2">Live Chat</h2>
-            <div class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2">
-              <p>[0702Z] Feb 11, 2025 00:23Z - test</p>
-              <p>[0704Z] Feb 11, 2025 00:24Z - test message</p>
-              <p>[0722Z] Feb 11, 2025 00:25Z - Another message</p>
-            </div>
-            <input type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
+            <div id="chat-feed" class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2"></div>
+            <input id="chat-input" type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
           </section>
         </div>
       </div>
     </main>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${protocol}://${window.location.host}/rt`);
+        const feed = document.getElementById('chat-feed');
+        const input = document.getElementById('chat-input');
+
+        ws.onmessage = evt => {
+          const p = document.createElement('p');
+          p.textContent = evt.data;
+          feed.appendChild(p);
+          feed.scrollTop = feed.scrollHeight;
+        };
+
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && input.value.trim() !== '') {
+            ws.send(input.value.trim());
+            input.value = '';
+          }
+        });
+      });
+    </script>
   </body>
 </html>
 
