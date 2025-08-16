@@ -4,6 +4,10 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "migrate": "pnpm -r migrate"
+    "migrate": "pnpm -r migrate",
+    "dev": "pnpm -r dev"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

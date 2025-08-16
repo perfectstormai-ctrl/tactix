@@ -19,7 +19,9 @@ services:
       timeout: 5s
       retries: 5
   auth-svc:
-    build: ./services/auth-svc
+    build:
+      context: .
+      dockerfile: services/auth-svc/Dockerfile
     env_file:
       - ./ops/env/auth.env
     depends_on:
@@ -30,20 +32,23 @@ services:
       timeout: 5s
       retries: 5
   incident-svc:
-    build: ./services/incident-svc
-    env_file:
-      - ./ops/env/incident.env
+    build:
+      context: .
+      dockerfile: services/incident/Dockerfile
+    environment:
+      PGURL: postgres://tactix:tactix@postgres:5432/tactix
+      PORT: 3000
     depends_on:
       - postgres
-      - opensearch
-      - minio
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 5s
-      timeout: 5s
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
       retries: 5
   warlog-svc:
-    build: ./services/warlog-svc
+    build:
+      context: .
+      dockerfile: services/warlog-svc/Dockerfile
     env_file:
       - ./ops/env/warlog.env
     depends_on:
@@ -55,7 +60,9 @@ services:
       timeout: 5s
       retries: 5
   tak-ingest-svc:
-    build: ./services/tak-ingest-svc
+    build:
+      context: .
+      dockerfile: services/tak-ingest-svc/Dockerfile
     env_file:
       - ./ops/env/tak.env
     depends_on:
@@ -67,7 +74,9 @@ services:
       timeout: 5s
       retries: 5
   realtime-svc:
-    build: ./services/realtime-svc
+    build:
+      context: .
+      dockerfile: services/realtime-svc/Dockerfile
     env_file:
       - ./ops/env/realtime.env
     depends_on:
@@ -78,7 +87,9 @@ services:
       timeout: 5s
       retries: 5
   ui:
-    build: ./ui
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
   postgres:
     image: postgres:16
     environment:
