@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import { createClient, runMigrations } from '@tactix/lib-db';
 import { Incident } from '@tactix/types';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const client = createClient();
@@ -14,6 +17,10 @@ async function main() {
   if (fs.existsSync(migrationsDir)) {
     await runMigrations(client, migrationsDir);
   }
+
+  app.get('/health', (_req, res) => {
+    res.json({ ok: true });
+  });
 
   app.get('/incidents', (_req, res) => {
     const incidents: Incident[] = [];

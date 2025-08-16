@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const { Client } = require('@opensearch-project/opensearch');
@@ -33,7 +34,9 @@ init().catch(err => {
   process.exit(1);
 });
 
-app.get('/health', (_req, res) => res.send('warlog ok'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
 
 app.get('/entries', async (req, res) => {
   const { q } = req.query;
