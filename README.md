@@ -31,3 +31,27 @@ npm test
 ```
 
 These are placeholders until real tests are added.
+
+## Redis Streams Demo
+
+The realtime service includes simple producer/consumer scripts demonstrating
+Redis Streams usage. Example keys:
+
+- `rt.incident.{id}` – incident-specific stream
+- `rt.system.broadcast` – system-wide broadcast stream
+
+Run the producer to append a message:
+
+```bash
+node services/realtime-svc/stream-producer.js rt.system.broadcast "hello"
+```
+
+Start the consumer to read and persist the last ID, allowing replay after
+restart:
+
+```bash
+node services/realtime-svc/stream-consumer.js rt.system.broadcast
+```
+
+The consumer stores the last seen ID in a local file and resumes from that
+point on subsequent runs.
