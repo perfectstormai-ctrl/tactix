@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { URL } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 export interface Incident {
   id: number;
@@ -19,10 +20,21 @@ interface IncidentEvent {
   createdAt: Date;
 }
 
+interface Attachment {
+  id: number;
+  incidentId: number;
+  objectName: string;
+  filename: string;
+  createdAt: Date;
+}
+
 const incidents: Incident[] = [];
 const events: IncidentEvent[] = [];
 let nextIncidentId = 1;
 let nextEventId = 1;
+const attachments: Attachment[] = [];
+let nextAttachmentId = 1;
+const objectStore = new Map<string, Buffer>();
 
 async function readBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -34,6 +46,39 @@ async function readBody(req: http.IncomingMessage): Promise<any> {
       } catch (e) {
         reject(e);
       }
+    });
+    req.on('error', reject);
+  });
+}
+
+async function readMultipart(
+  req: http.IncomingMessage
+): Promise<{ filename: string; data: Buffer } | null> {
+  const contentType = req.headers['content-type'];
+  if (!contentType) return null;
+  const match = contentType.match(/boundary=([^;]+)/);
+  if (!match) return null;
+  const boundary = '--' + match[1];
+  const chunks: Buffer[] = [];
+  return new Promise((resolve, reject) => {
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      const parts = buffer.toString('binary').split(boundary);
+      for (const part of parts) {
+        if (!part || part === '--\r\n') continue;
+        const [head, tail] = part.split('\r\n\r\n');
+        if (!head || !tail) continue;
+        const nameMatch = head.match(/name=\"([^\"]+)\"/);
+        const filenameMatch = head.match(/filename=\"([^\"]+)\"/);
+        if (nameMatch && nameMatch[1] === 'file' && filenameMatch) {
+          const dataStr = tail.slice(0, -2);
+          const data = Buffer.from(dataStr, 'binary');
+          resolve({ filename: filenameMatch[1], data });
+          return;
+        }
+      }
+      resolve(null);
     });
     req.on('error', reject);
   });
@@ -142,6 +187,34 @@ export function createServer() {
       return json(res, 200, incident);
     }
 
+    const attachmentMatch = url.pathname.match(/^\/incidents\/(\d+)\/attachments$/);
+    if (req.method === 'POST' && attachmentMatch) {
+      const id = Number(attachmentMatch[1]);
+      const incident = incidents.find((i) => i.id === id);
+      if (!incident) return json(res, 404, {});
+      const file = await readMultipart(req).catch(() => null);
+      if (!file) return json(res, 400, { error: 'file required' });
+      const objectName = `attachments/${id}/${randomUUID()}`;
+      objectStore.set(objectName, file.data);
+      const attachment: Attachment = {
+        id: nextAttachmentId++,
+        incidentId: id,
+        objectName,
+        filename: file.filename,
+        createdAt: new Date(),
+      };
+      attachments.push(attachment);
+      const event: IncidentEvent = {
+        id: nextEventId++,
+        incidentId: id,
+        type: 'ATTACHMENT_ADDED',
+        payload: { attachmentId: attachment.id, objectName, filename: file.filename },
+        createdAt: new Date(),
+      };
+      events.push(event);
+      return json(res, 201, attachment);
+    }
+
     return json(res, 404, {});
   });
 }
@@ -156,4 +229,16 @@ function main() {
 
 if (require.main === module) {
   main();
+}
+
+export function getEvents() {
+  return events;
+}
+
+export function getAttachments() {
+  return attachments;
+}
+
+export function getObject(name: string) {
+  return objectStore.get(name);
 }

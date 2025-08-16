@@ -1,10 +1,14 @@
 const http = require('node:http');
 const { URL } = require('node:url');
+const { randomUUID } = require('node:crypto');
 
 let incidents = [];
 let events = [];
 let nextIncidentId = 1;
 let nextEventId = 1;
+let attachments = [];
+let nextAttachmentId = 1;
+const objectStore = new Map();
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -25,6 +29,37 @@ function json(res, code, body) {
   res.statusCode = code;
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify(body));
+}
+
+function readMultipart(req) {
+  const contentType = req.headers['content-type'];
+  if (!contentType) return Promise.resolve(null);
+  const match = contentType.match(/boundary=([^;]+)/);
+  if (!match) return Promise.resolve(null);
+  const boundary = '--' + match[1];
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      const parts = buffer.toString('binary').split(boundary);
+      for (const part of parts) {
+        if (!part || part === '--\r\n') continue;
+        const [head, tail] = part.split('\r\n\r\n');
+        if (!head || !tail) continue;
+        const nameMatch = head.match(/name=\"([^\"]+)\"/);
+        const filenameMatch = head.match(/filename=\"([^\"]+)\"/);
+        if (nameMatch && nameMatch[1] === 'file' && filenameMatch) {
+          const dataStr = tail.slice(0, -2);
+          const data = Buffer.from(dataStr, 'binary');
+          resolve({ filename: filenameMatch[1], data });
+          return;
+        }
+      }
+      resolve(null);
+    });
+    req.on('error', reject);
+  });
 }
 
 function createServer() {
@@ -124,6 +159,34 @@ function createServer() {
       return json(res, 200, incident);
     }
 
+    const attachmentMatch = url.pathname.match(/^\/incidents\/(\d+)\/attachments$/);
+    if (req.method === 'POST' && attachmentMatch) {
+      const id = Number(attachmentMatch[1]);
+      const incident = incidents.find((i) => i.id === id);
+      if (!incident) return json(res, 404, {});
+      const file = await readMultipart(req).catch(() => null);
+      if (!file) return json(res, 400, { error: 'file required' });
+      const objectName = `attachments/${id}/${randomUUID()}`;
+      objectStore.set(objectName, file.data);
+      const attachment = {
+        id: nextAttachmentId++,
+        incidentId: id,
+        objectName,
+        filename: file.filename,
+        createdAt: new Date(),
+      };
+      attachments.push(attachment);
+      const event = {
+        id: nextEventId++,
+        incidentId: id,
+        type: 'ATTACHMENT_ADDED',
+        payload: { attachmentId: attachment.id, objectName, filename: file.filename },
+        createdAt: new Date(),
+      };
+      events.push(event);
+      return json(res, 201, attachment);
+    }
+
     return json(res, 404, {});
   });
 }
@@ -140,4 +203,16 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { createServer };
+function getEvents() {
+  return events;
+}
+
+function getAttachments() {
+  return attachments;
+}
+
+function getObject(name) {
+  return objectStore.get(name);
+}
+
+module.exports = { createServer, getEvents, getAttachments, getObject };

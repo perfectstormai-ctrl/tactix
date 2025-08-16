@@ -1,7 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { createServer } = require('../dist/index.js');
+const {
+  createServer,
+  getAttachments,
+  getEvents,
+  getObject,
+} = require('../dist/index.js');
 
 test('incident endpoints lifecycle', async () => {
   const server = createServer().listen(0);
@@ -48,6 +53,23 @@ test('incident endpoints lifecycle', async () => {
   res = await fetch(`${base}/incidents?status=closed&q=Out`);
   list = await res.json();
   assert.strictEqual(list.length, 1);
+
+  const form = new FormData();
+  const fileContent = 'hello world';
+  form.append('file', new Blob([fileContent]), 'README.md');
+  res = await fetch(`${base}/incidents/${id}/attachments`, {
+    method: 'POST',
+    body: form,
+  });
+  assert.strictEqual(res.status, 201);
+  const attachment = await res.json();
+  const allAttachments = getAttachments();
+  assert.strictEqual(allAttachments.length, 1);
+  assert.equal(allAttachments[0].id, attachment.id);
+  assert.equal(getObject(attachment.objectName).toString(), fileContent);
+  const event = getEvents().find((e) => e.type === 'ATTACHMENT_ADDED');
+  assert.ok(event);
+  assert.equal(event.incidentId, id);
 
   server.close();
 });
