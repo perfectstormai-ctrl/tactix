@@ -1,26 +1,109 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>TACTIX</title>
-    <style>
-      body { font-family: sans-serif; margin: 2rem; }
-      h1 { color: #333; }
-      ul { list-style: none; padding: 0; }
-      .service { margin: 0.5rem 0; }
-      .status { font-weight: bold; }
-      pre { background: #f4f4f4; padding: 1rem; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
   </head>
-  <body>
-    <h1>TACTIX Services</h1>
-    <ul id="services">
-      <li class="service" data-url="/auth/health">Auth Service: <span class="status">checking...</span></li>
-      <li class="service" data-url="/api/health">Incident Service: <span class="status">checking...</span></li>
-      <li class="service" data-url="/rt/health">Realtime Service: <span class="status">checking...</span></li>
-    </ul>
-    <h2>Realtime Feed</h2>
-    <pre id="feed">Connecting...</pre>
-    <script src="app.js"></script>
+  <body class="bg-gray-100 text-gray-800">
+    <header class="bg-white border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="text-sm text-gray-600">
+          <span class="font-semibold">TCTH</span>
+          <span class="mx-2">&gt;</span>
+          <span>Common Operating Picture</span>
+          <span class="mx-2">&gt;</span>
+          <span class="font-semibold">OP LENTUS 25-01</span>
+        </div>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="#" class="text-blue-600 hover:underline">Virtual Diary Viewer</a>
+          <a href="#" class="text-blue-600 hover:underline">Mission Playback</a>
+          <a href="#" class="text-blue-600 hover:underline">Manage Messages</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 flex gap-4">
+      <!-- Left column -->
+      <aside class="w-64 space-y-4">
+        <section class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-2">Navigator</h2>
+          <div class="space-y-2 text-sm">
+            <div>
+              <label class="block font-medium">Campaign</label>
+              <select class="mt-1 w-full border rounded p-1">
+                <option>OP LENTUS 25-01</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-medium">Operation</label>
+              <select class="mt-1 w-full border rounded p-1">
+                <option>YK PTE-AM</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-medium">Unit</label>
+              <select class="mt-1 w-full border rounded p-1">
+                <option>25 CBG</option>
+              </select>
+            </div>
+          </div>
+        </section>
+        <section class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-2">Ongoing Incident</h2>
+          <p class="text-sm">IR2024-NR Incident Report C003</p>
+        </section>
+        <section class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-2">Draft Reports</h2>
+          <ul class="text-sm list-disc pl-4">
+            <li>Consolidated Sitrep to 5DGMBC</li>
+          </ul>
+        </section>
+        <section class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-2">CloudTAK Wiki</h2>
+          <p class="text-sm">A centralized knowledge base for guides, tools, and best practices across the CloudTAK ecosystem.</p>
+        </section>
+      </aside>
+
+      <!-- Main content -->
+      <div class="flex-1 space-y-4">
+        <section class="bg-white rounded shadow p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">Warlog</h2>
+            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
+          </div>
+          <ul class="space-y-4 text-sm">
+            <li>
+              <div class="font-medium">Initial Report <span class="text-xs text-gray-500">0834Z - RSM Smith</span></div>
+              <p class="text-gray-700">We have received no further communication from PNRs under Rapp Training after the second last volley.</p>
+            </li>
+            <li>
+              <div class="font-medium">EFDC Report <span class="text-xs text-gray-500">0847Z - LT Coolbreeze</span></div>
+              <p class="text-gray-700">Over the last 24 hours, various reconnaissance operations have reportedly been seen 40 miles south of YK and the 35th Bn might arrive by 08:25 tomorrow for friendly, as per the latest intel.</p>
+            </li>
+          </ul>
+        </section>
+
+        <div class="flex gap-4">
+          <section class="flex-1 bg-white rounded shadow p-4">
+            <h2 class="text-lg font-semibold mb-2">Quick Warlog Entry</h2>
+            <textarea class="w-full h-32 border rounded p-2 text-sm" placeholder="Enter log entry..."></textarea>
+            <div class="mt-2 text-right">
+              <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
+            </div>
+          </section>
+          <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
+            <h2 class="text-lg font-semibold mb-2">Live Chat</h2>
+            <div class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2">
+              <p>[0702Z] Feb 11, 2025 00:23Z - test</p>
+              <p>[0704Z] Feb 11, 2025 00:24Z - test message</p>
+              <p>[0722Z] Feb 11, 2025 00:25Z - Another message</p>
+            </div>
+            <input type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
+          </section>
+        </div>
+      </div>
+    </main>
   </body>
 </html>
+
