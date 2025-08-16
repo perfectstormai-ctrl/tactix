@@ -1,6 +1,7 @@
 # TACTIX
 
-Minimum Viable Slice (MVS) of the Tactical Assistance and Collaboration Tool for Incident eXchange.
+## Description
+TACTIX (Tactical Assistance and Collaboration Tool for Incident eXchange) is a modular, containerized platform for tracking and sharing incident data in real time. The project provides a Minimum Viable Slice (MVS) that stitches together the core services required for ingest, authentication, incident tracking and collaborative presentation.
 
 This repository contains a containerized skeleton for the core services:
 
