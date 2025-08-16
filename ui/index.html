@@ -31,21 +31,15 @@
           <div class="space-y-2 text-sm">
             <div>
               <label class="block font-medium">Campaign</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>OP LENTUS 25-01</option>
-              </select>
+              <select id="campaign-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
             <div>
               <label class="block font-medium">Operation</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>YK PTE-AM</option>
-              </select>
+              <select id="operation-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
             <div>
               <label class="block font-medium">Unit</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>25 CBG</option>
-              </select>
+              <select id="unit-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
           </div>
         </section>
@@ -65,45 +59,56 @@
         </section>
       </aside>
 
-      <!-- Main content -->
-      <div class="flex-1 space-y-4">
-        <section class="bg-white rounded shadow p-4">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-semibold">Warlog</h2>
-            <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
-          </div>
-          <ul id="warlog-list" class="space-y-4 text-sm"></ul>
-        </section>
+     <!-- Main content -->
+<div class="flex-1 space-y-4">
+  <section class="bg-white rounded shadow p-4">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold">Warlog</h2>
+      <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
+    </div>
+    <ul id="warlog-list" class="space-y-4 text-sm"></ul>
+  </section>
 
-        <div class="flex gap-4">
-          <section class="flex-1 bg-white rounded shadow p-4">
-            <h2 class="text-lg font-semibold mb-2">Quick Warlog Entry</h2>
-            <textarea id="warlog-text" class="w-full h-32 border rounded p-2 text-sm" placeholder="Enter log entry..."></textarea>
-            <div class="mt-2 text-right">
-              <button id="warlog-save" class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
-            </div>
-          </section>
-          <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
-            <h2 class="text-lg font-semibold mb-2">Live Chat</h2>
-            <div id="chat-feed" class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2"></div>
-            <input id="chat-input" type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
-          </section>
-        </div>
+  <div class="flex gap-4">
+    <section class="flex-1 bg-white rounded shadow p-4">
+      <h2 class="text-lg font-semibold mb-2">Quick Warlog Entry</h2>
+      <textarea id="warlog-text" class="w-full h-32 border rounded p-2 text-sm" placeholder="Enter log entry..."></textarea>
+      <div class="mt-2 text-right">
+        <button id="warlog-save" class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
       </div>
-    <main>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${protocol}://${window.location.host}/rt`);
-        const feed = document.getElementById('chat-feed');
-        const input = document.getElementById('chat-input');
+    </section>
 
-        ws.onmessage = evt => {
-          const p = document.createElement('p');
-          p.textContent = evt.data;
-          feed.appendChild(p);
-          feed.scrollTop = feed.scrollHeight;
-        };
+    <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
+      <h2 class="text-lg font-semibold mb-2">Live Chat</h2>
+      <div id="chat-feed" class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2"></div>
+      <input id="chat-input" type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
+    </section>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${protocol}://${window.location.host}/rt`);
+    const feed = document.getElementById('chat-feed');
+    const input = document.getElementById('chat-input');
+
+    ws.onmessage = evt => {
+      const p = document.createElement('p');
+      p.textContent = evt.data;
+      feed.appendChild(p);
+      feed.scrollTop = feed.scrollHeight;
+    };
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && input.value.trim()) {
+        ws.send(input.value);
+        input.value = '';
+      }
+    });
+  });
+</script>
+
 
         input.addEventListener('keydown', e => {
           if (e.key === 'Enter' && input.value.trim() !== '') {
@@ -143,5 +148,39 @@
   </script>
 </main>
   </body>
+  <script>
+    async function loadOperation(opId) {
+      const res = await fetch(`/api/operations/${opId}`);
+      const data = await res.json();
+
+      const warlogEl = document.getElementById('warlog');
+      warlogEl.innerHTML = '';
+      data.warlog.forEach(entry => {
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="font-medium">${entry.author || 'Unknown'} <span class="text-xs text-gray-500">${new Date(entry.ts).toISOString()}</span></div><p class="text-gray-700">${entry.message}</p>`;
+        warlogEl.appendChild(li);
+      });
+
+      const chatInfo = document.getElementById('chat-info');
+      chatInfo.textContent = `XMPP: ${data.operation.xmpp_host || ''} ${data.operation.xmpp_room || ''}`;
+
+      const unitSelect = document.getElementById('unit-select');
+      unitSelect.innerHTML = '';
+      data.units.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        unitSelect.appendChild(opt);
+      });
+
+      const operationSelect = document.getElementById('operation-select');
+      operationSelect.innerHTML = `<option value="${data.operation.id}">${data.operation.name}</option>`;
+
+      const campaignSelect = document.getElementById('campaign-select');
+      campaignSelect.innerHTML = `<option value="${data.operation.campaign_id}">Campaign ${data.operation.campaign_id}</option>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => loadOperation(1));
+  </script>
 </html>
 
