@@ -1,5 +1,5 @@
 {
-  "name": "auth-svc",
+  "name": "auth-service",
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "ldapjs": "^2.3.3"
   }
 }

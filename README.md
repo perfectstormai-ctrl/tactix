@@ -6,7 +6,7 @@ TACTIX (Tactical Awareness and Communications Tracking for Incident eXchange) is
 This repository contains a containerized skeleton for the core services:
 
 - **gateway** – NGINX reverse proxy
-- **auth-svc** – LDAP mock authentication service providing `/auth/login` and `/auth/refresh`
+- **auth-service** – OpenLDAP-backed authentication service issuing JWTs
 - **incident-svc** – event‑sourced incident tracking
 - **tak-ingest-svc** – Cursor-on-Target ingest pipeline
 - **realtime-svc** – WebSocket gateway

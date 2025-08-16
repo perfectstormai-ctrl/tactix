@@ -7,7 +7,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - auth-svc
+      - auth-service
       - incident-svc
       - realtime-svc
       - warlog-svc
@@ -18,14 +18,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  auth-svc:
-    build: ./services/auth-svc
+  auth-service:
+    build: ./services/auth-service
     env_file:
       - ./ops/env/auth.env
-    depends_on:
-      - postgres
+    ports:
+      - "3001:3001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -1,12 +1,24 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
+const jwt = require('jsonwebtoken');
+const { generateKeyPairSync } = require('crypto');
+
+// generate key pair for testing before requiring service
+const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+process.env.JWT_PUBLIC_KEY = publicKey.export({ type: 'pkcs1', format: 'pem' });
+
 const {
   createServer,
   getAttachments,
   getEvents,
   getObject,
 } = require('../dist/index.js');
+
+const token = jwt.sign({ sub: 'tester', roles: ['dispatcher'] }, privateKey, {
+  algorithm: 'RS256',
+  expiresIn: '1h',
+});
 
 test('incident endpoints lifecycle', async () => {
   const server = createServer().listen(0);
@@ -43,7 +55,10 @@ test('incident endpoints lifecycle', async () => {
 
   res = await fetch(`${base}/incidents/${id}/status`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ status: 'closed' })
   });
   assert.strictEqual(res.status, 200);

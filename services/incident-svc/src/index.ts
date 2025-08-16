@@ -2,6 +2,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Client, createClient } from '@tactix/lib-db';
+import { requireRole } from '@tactix/auth';
 
 export interface Incident {
   id: number;
@@ -225,21 +226,23 @@ export function createServer() {
 
     const statusMatch = url.pathname.match(/^\/incidents\/(\d+)\/status$/);
     if (req.method === 'POST' && statusMatch) {
-      const id = Number(statusMatch[1]);
-      const body = await readBody(req).catch(() => null);
-      if (!body || !body.status) return json(res, 400, { error: 'status required' });
-      const incident = incidents.find((i) => i.id === id);
-      if (!incident) return json(res, 404, {});
-      const event: IncidentEvent = {
-        id: nextEventId++,
-        incidentId: id,
-        type: 'STATUS_CHANGED',
-        payload: { status: body.status },
-        createdAt: new Date(),
-      };
-      incident.status = body.status;
-      await commitEvent(event);
-      return json(res, 200, incident);
+      return requireRole(['dispatcher'])(req as any, res as any, async () => {
+        const id = Number(statusMatch[1]);
+        const body = await readBody(req).catch(() => null);
+        if (!body || !body.status) return json(res, 400, { error: 'status required' });
+        const incident = incidents.find((i) => i.id === id);
+        if (!incident) return json(res, 404, {});
+        const event: IncidentEvent = {
+          id: nextEventId++,
+          incidentId: id,
+          type: 'STATUS_CHANGED',
+          payload: { status: body.status },
+          createdAt: new Date(),
+        };
+        incident.status = body.status;
+        await commitEvent(event);
+        return json(res, 200, incident);
+      });
     }
 
     const attachmentMatch = url.pathname.match(/^\/incidents\/(\d+)\/attachments$/);
