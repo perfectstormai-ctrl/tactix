@@ -11,42 +11,8 @@ exports.getObject = getObject;
 const node_http_1 = __importDefault(require("node:http"));
 const node_url_1 = require("node:url");
 const node_crypto_1 = require("node:crypto");
-function requireAuth(req, res, next) {
-    var _a;
-    const header = (_a = req.headers) === null || _a === void 0 ? void 0 : _a['authorization'];
-    if (!header || !header.startsWith('Bearer ')) {
-        res.statusCode = 401;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ error: 'unauthorized' }));
-        return;
-    }
-    const token = header.slice(7);
-    try {
-        const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-        req.user = payload;
-        next();
-    }
-    catch (_b) {
-        res.statusCode = 401;
-        res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ error: 'unauthorized' }));
-    }
-}
-function requireRole(roles) {
-    return (req, res, next) => {
-        requireAuth(req, res, () => {
-            var _a;
-            const userRoles = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.roles) || [];
-            if (!roles.some((r) => userRoles.includes(r))) {
-                res.statusCode = 403;
-                res.setHeader('content-type', 'application/json');
-                res.end(JSON.stringify({ error: 'forbidden' }));
-                return;
-            }
-            next();
-        });
-    };
-}
+const lib_db_1 = require("@tactix/lib-db");
+const auth_1 = require("@tactix/auth");
 const effective_1 = require("./rbac/effective");
 const incidents = [];
 const events = [];
@@ -55,9 +21,6 @@ let nextEventId = 1;
 const attachments = [];
 let nextAttachmentId = 1;
 const objectStore = new Map();
-const operations = [];
-const assignmentsDb = [];
-const roleGrantsDb = [];
 let dbClient = null;
 function setClient(client) {
     dbClient = client;
@@ -131,13 +94,47 @@ async function readMultipart(req) {
         req.on('error', reject);
     });
 }
+async function sendXmppMessage(jid, content) {
+    if (!process.env.XMPP_URL)
+        return;
+    try {
+        await fetch(process.env.XMPP_URL, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ jid, content }),
+        });
+    }
+    catch (_) {
+        /* ignore */
+    }
+}
+async function logWarlog(author, content) {
+    const url = process.env.WARLOG_URL;
+    if (!url)
+        return;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ author, content }),
+        });
+    }
+    catch (_) {
+        /* ignore */
+    }
+}
 function json(res, code, body) {
     res.statusCode = code;
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify(body));
 }
 function createServer() {
-    // dbClient must be set via setClient in tests; no auto-connect
+    if (!dbClient && process.env.DATABASE_URL) {
+        dbClient = (0, lib_db_1.createClient)();
+        dbClient.connect().catch(() => {
+            dbClient = null;
+        });
+    }
     return node_http_1.default.createServer(async (req, res) => {
         if (!req.url)
             return json(res, 404, {});
@@ -147,7 +144,7 @@ function createServer() {
         }
         const mePerms = req.method === 'GET' && url.pathname === '/me/effective-permissions';
         if (mePerms) {
-            return requireAuth(req, res, async () => {
+            return (0, auth_1.requireAuth)(req, res, async () => {
                 const operationCode = url.searchParams.get('operationCode');
                 if (!operationCode || !dbClient) {
                     return json(res, 400, { error: 'operationCode required' });
@@ -166,7 +163,7 @@ function createServer() {
         const permMatch = url.pathname.match(/^\/operations\/([^/]+)\/permissions$/);
         if (req.method === 'GET' && permMatch && dbClient) {
             const opId = permMatch[1];
-            return requireAuth(req, res, async () => {
+            return (0, auth_1.requireAuth)(req, res, async () => {
                 const opRes = await dbClient.query('SELECT operation_id, code, title FROM operations WHERE operation_id=$1', [opId]);
                 if (!opRes.rowCount)
                     return json(res, 404, {});
@@ -197,7 +194,7 @@ function createServer() {
         const assignMatch = url.pathname.match(/^\/operations\/([^/]+)\/assignments$/);
         if (req.method === 'POST' && assignMatch && dbClient) {
             const opId = assignMatch[1];
-            return requireAuth(req, res, async () => {
+            return (0, auth_1.requireAuth)(req, res, async () => {
                 const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
                 if (!opRes.rowCount)
                     return json(res, 404, {});
@@ -235,7 +232,7 @@ function createServer() {
         if (req.method === 'DELETE' && assignDelMatch && dbClient) {
             const opId = assignDelMatch[1];
             const assignmentId = assignDelMatch[2];
-            return requireAuth(req, res, async () => {
+            return (0, auth_1.requireAuth)(req, res, async () => {
                 const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
                 if (!opRes.rowCount)
                     return json(res, 404, {});
@@ -253,7 +250,7 @@ function createServer() {
         const roleMatch = url.pathname.match(/^\/operations\/([^/]+)\/roles$/);
         if (req.method === 'POST' && roleMatch && dbClient) {
             const opId = roleMatch[1];
-            return requireAuth(req, res, async () => {
+            return (0, auth_1.requireAuth)(req, res, async () => {
                 const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
                 if (!opRes.rowCount)
                     return json(res, 404, {});
@@ -269,6 +266,77 @@ function createServer() {
                 }
                 const row = (await dbClient.query('INSERT INTO role_grants (grant_id, operation_id, user_upn, role, created_by_upn) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (operation_id, user_upn, role) DO UPDATE SET created_by_upn=$5 RETURNING *', [(0, node_crypto_1.randomUUID)(), opId, body.userUpn, body.role, req.user.sub])).rows[0];
                 return json(res, 201, row);
+            });
+        }
+        const orgMatch = url.pathname.match(/^\/operations\/([^/]+)\/org-units$/);
+        if (req.method === 'GET' && orgMatch && dbClient) {
+            const opId = orgMatch[1];
+            const { rows } = await dbClient.query('SELECT org_unit_id, scope, unit_name, xmpp_jid FROM org_units WHERE operation_id=$1', [opId]);
+            return json(res, 200, rows);
+        }
+        const msgMatch = url.pathname.match(/^\/operations\/([^/]+)\/messages$/);
+        if (msgMatch && dbClient) {
+            const opId = msgMatch[1];
+            if (req.method === 'POST') {
+                return (0, auth_1.requireAuth)(req, res, async () => {
+                    const body = await readBody(req).catch(() => null);
+                    if (!body || !body.recipientScope || !body.content) {
+                        return json(res, 400, {
+                            error: 'recipientScope and content required',
+                        });
+                    }
+                    const id = (0, node_crypto_1.randomUUID)();
+                    const row = (await dbClient.query('INSERT INTO messages (message_id, operation_id, author_upn, recipient_scope, recipient_unit, status, content) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *', [
+                        id,
+                        opId,
+                        req.user.sub,
+                        body.recipientScope,
+                        body.recipientUnit || null,
+                        'DRAFT',
+                        body.content,
+                    ])).rows[0];
+                    return json(res, 201, row);
+                });
+            }
+            if (req.method === 'GET') {
+                return (0, auth_1.requireAuth)(req, res, async () => {
+                    const status = url.searchParams.get('status');
+                    const params = [opId];
+                    let sql = 'SELECT * FROM messages WHERE operation_id=$1';
+                    if (status) {
+                        params.push(status);
+                        sql += ' AND status=$2';
+                        if (status === 'DRAFT') {
+                            params.push(req.user.sub);
+                            sql += ' AND author_upn=$3';
+                        }
+                    }
+                    const { rows } = await dbClient.query(sql, params);
+                    return json(res, 200, rows);
+                });
+            }
+        }
+        const submitMatch = url.pathname.match(/^\/operations\/([^/]+)\/messages\/([^/]+)\/submit$/);
+        if (req.method === 'PUT' && submitMatch && dbClient) {
+            const opId = submitMatch[1];
+            const msgId = submitMatch[2];
+            return (0, auth_1.requireAuth)(req, res, async () => {
+                const { rows } = await dbClient.query('UPDATE messages SET status=$1, updated_at=now() WHERE message_id=$2 AND operation_id=$3 RETURNING *', ['SUBMITTED', msgId, opId]);
+                if (!rows.length)
+                    return json(res, 404, {});
+                const msg = rows[0];
+                try {
+                    const r = await dbClient.query('SELECT xmpp_jid FROM org_units WHERE operation_id=$1 AND scope=$2 AND unit_name=$3', [opId, msg.recipient_scope, msg.recipient_unit]);
+                    const jid = r.rows[0]?.xmpp_jid;
+                    if (jid)
+                        await sendXmppMessage(jid, msg.content);
+                }
+                catch (_) { }
+                try {
+                    await logWarlog(msg.author_upn, `Message submitted to ${msg.recipient_unit || msg.recipient_scope}`);
+                }
+                catch (_) { }
+                return json(res, 200, msg);
             });
         }
         if (req.method === 'POST' && url.pathname === '/incidents') {
@@ -361,7 +429,7 @@ function createServer() {
         }
         const statusMatch = url.pathname.match(/^\/incidents\/(\d+)\/status$/);
         if (req.method === 'POST' && statusMatch) {
-            return requireRole(['dispatcher'])(req, res, async () => {
+            return (0, auth_1.requireRole)(['dispatcher'])(req, res, async () => {
                 const id = Number(statusMatch[1]);
                 const body = await readBody(req).catch(() => null);
                 if (!body || !body.status)

@@ -2,6 +2,7 @@
 // Uses Tailwind CSS for styling
 
 import LanguageSwitcher from './src/components/LanguageSwitcher.tsx';
+import NewMessageCard from './src/components/NewMessageCard.tsx';
 import i18n from './src/i18n/index.ts';
 import { formatTime } from './src/i18n/format.ts';
 
@@ -67,6 +68,7 @@ function App() {
           <LanguageSwitcher />
         </div>
       </div>
+      {view !== 'login' && <NewMessageCard token={token} />}
       {view === 'login' && <Login onLogin={handleLogin} />}
       {view === 'list' && (
         <IncidentList
