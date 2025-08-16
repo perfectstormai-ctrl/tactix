@@ -5,7 +5,7 @@ import LanguageSwitcher from './src/components/LanguageSwitcher.tsx';
 import i18n from './src/i18n/index.ts';
 import { formatTime } from './src/i18n/format.ts';
 
-const { useEffect, useState } = React;
+const { useEffect, useState, useRef } = React;
 const { useTranslation, I18nextProvider } = ReactI18next;
 
 function App() {
@@ -248,6 +248,7 @@ function IncidentDetail({ token, incidentId, onBack }) {
   const [incident, setIncident] = useState(null);
   const [comment, setComment] = useState('');
   const [warlog, setWarlog] = useState([]);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -271,6 +272,13 @@ function IncidentDetail({ token, incidentId, onBack }) {
         setWarlog(log);
       });
   }, [incidentId]);
+
+  useEffect(() => {
+    const div = logRef.current;
+    if (div) {
+      div.scrollTop = div.scrollHeight;
+    }
+  }, [warlog]);
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -363,7 +371,10 @@ function IncidentDetail({ token, incidentId, onBack }) {
       )}
       <div>
         <h3 className="font-semibold">{t('warlog.title')}</h3>
-        <div className="bg-black text-green-200 p-2 rounded text-xs h-64 overflow-y-auto">
+        <div
+          ref={logRef}
+          className="bg-black text-green-200 p-2 rounded text-xs h-64 overflow-y-auto"
+        >
           {warlog.length === 0 && <div>{t('warlog.empty')}</div>}
           {warlog.map((e, idx) => (
             <div
