@@ -31,21 +31,15 @@
           <div class="space-y-2 text-sm">
             <div>
               <label class="block font-medium">Campaign</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>OP LENTUS 25-01</option>
-              </select>
+              <select id="campaign-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
             <div>
               <label class="block font-medium">Operation</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>YK PTE-AM</option>
-              </select>
+              <select id="operation-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
             <div>
               <label class="block font-medium">Unit</label>
-              <select class="mt-1 w-full border rounded p-1">
-                <option>25 CBG</option>
-              </select>
+              <select id="unit-select" class="mt-1 w-full border rounded p-1"></select>
             </div>
           </div>
         </section>
@@ -72,16 +66,7 @@
             <h2 class="text-lg font-semibold">Warlog</h2>
             <button class="bg-blue-600 text-white text-sm px-3 py-1 rounded">Save</button>
           </div>
-          <ul class="space-y-4 text-sm">
-            <li>
-              <div class="font-medium">Initial Report <span class="text-xs text-gray-500">0834Z - RSM Smith</span></div>
-              <p class="text-gray-700">We have received no further communication from PNRs under Rapp Training after the second last volley.</p>
-            </li>
-            <li>
-              <div class="font-medium">EFDC Report <span class="text-xs text-gray-500">0847Z - LT Coolbreeze</span></div>
-              <p class="text-gray-700">Over the last 24 hours, various reconnaissance operations have reportedly been seen 40 miles south of YK and the 35th Bn might arrive by 08:25 tomorrow for friendly, as per the latest intel.</p>
-            </li>
-          </ul>
+          <ul id="warlog" class="space-y-4 text-sm"></ul>
         </section>
 
         <div class="flex gap-4">
@@ -94,16 +79,47 @@
           </section>
           <section class="flex-1 bg-white rounded shadow p-4 flex flex-col">
             <h2 class="text-lg font-semibold mb-2">Live Chat</h2>
-            <div class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2">
-              <p>[0702Z] Feb 11, 2025 00:23Z - test</p>
-              <p>[0704Z] Feb 11, 2025 00:24Z - test message</p>
-              <p>[0722Z] Feb 11, 2025 00:25Z - Another message</p>
-            </div>
-            <input type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
+            <div id="chat-info" class="text-xs text-gray-500 mb-2"></div>
+            <div id="chat-log" class="flex-1 border rounded p-2 bg-black text-green-200 text-xs overflow-y-auto mb-2"></div>
+            <input id="chat-input" type="text" class="border rounded p-2 text-sm" placeholder="Chat..." />
           </section>
         </div>
       </div>
     </main>
   </body>
+  <script>
+    async function loadOperation(opId) {
+      const res = await fetch(`/api/operations/${opId}`);
+      const data = await res.json();
+
+      const warlogEl = document.getElementById('warlog');
+      warlogEl.innerHTML = '';
+      data.warlog.forEach(entry => {
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="font-medium">${entry.author || 'Unknown'} <span class="text-xs text-gray-500">${new Date(entry.ts).toISOString()}</span></div><p class="text-gray-700">${entry.message}</p>`;
+        warlogEl.appendChild(li);
+      });
+
+      const chatInfo = document.getElementById('chat-info');
+      chatInfo.textContent = `XMPP: ${data.operation.xmpp_host || ''} ${data.operation.xmpp_room || ''}`;
+
+      const unitSelect = document.getElementById('unit-select');
+      unitSelect.innerHTML = '';
+      data.units.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        unitSelect.appendChild(opt);
+      });
+
+      const operationSelect = document.getElementById('operation-select');
+      operationSelect.innerHTML = `<option value="${data.operation.id}">${data.operation.name}</option>`;
+
+      const campaignSelect = document.getElementById('campaign-select');
+      campaignSelect.innerHTML = `<option value="${data.operation.campaign_id}">Campaign ${data.operation.campaign_id}</option>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => loadOperation(1));
+  </script>
 </html>
 
