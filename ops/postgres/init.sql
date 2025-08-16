@@ -26,3 +26,40 @@ CREATE TABLE IF NOT EXISTS warlog_entries (
   author TEXT,
   message TEXT
 );
+
+-- Event log for incident writes
+CREATE TABLE IF NOT EXISTS incident_events (
+  id SERIAL PRIMARY KEY,
+  incident_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  data JSONB NOT NULL,
+  ts TIMESTAMPTZ DEFAULT now()
+);
+
+-- Incident projection table
+CREATE TABLE IF NOT EXISTS incidents (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Projection for comments on incidents
+CREATE TABLE IF NOT EXISTS incident_comments (
+  id SERIAL PRIMARY KEY,
+  incident_id INTEGER REFERENCES incidents(id),
+  author TEXT,
+  comment TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Projection for attachments (currently stubbed)
+CREATE TABLE IF NOT EXISTS incident_attachments (
+  id SERIAL PRIMARY KEY,
+  incident_id INTEGER REFERENCES incidents(id),
+  filename TEXT,
+  url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
