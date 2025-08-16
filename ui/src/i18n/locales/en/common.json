@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "warlog": "Warlog",
+    "quickWarlogEntry": "Quick Warlog Entry",
+    "liveChat": "Live Chat",
+    "save": "Save",
+    "chatPlaceholder": "Chat...",
+    "language": "Language",
+    "english": "English",
+    "french": "Français"
+  },
+  "warlog": {
+    "title": "Warlog",
+    "empty": "No entries yet.",
+    "quickEntryTitle": "Quick Warlog Entry"
+  },
+  "chat": {
+    "title": "Live Chat",
+    "empty": "No messages yet.",
+    "send": "Send",
+    "typingPlaceholder": "Chat..."
+  },
+  "global": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "search": "Search",
+    "status": "Status",
+    "severity": "Severity"
+  }
+}
