@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv').config();
 const loadMessages = require('./messageLoader');
 
 const app = express();

@@ -2,6 +2,7 @@ const express = require('express');
 const WebSocket = require('ws');
 const { Server } = WebSocket;
 const { client, xml } = require('@xmpp/client');
+require('dotenv').config();
 
 const app = express();
 app.get('/health', (_req, res) => res.send('realtime ok'));

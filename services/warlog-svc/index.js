@@ -1,5 +1,6 @@
 const express = require('express');
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());

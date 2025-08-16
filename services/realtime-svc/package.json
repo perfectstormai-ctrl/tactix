@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@xmpp/client": "^0.13.1",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "ws": "^8.13.0"
   }

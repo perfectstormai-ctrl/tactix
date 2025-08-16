@@ -8,7 +8,7 @@ function App() {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${window.location.host}/rt`);
+    const ws = new WebSocket(`${protocol}://${window.location.host}/api/realtime/`);
     ws.onopen = () => setFeed('Connected');
     ws.onmessage = (evt) => setFeed((prev) => `${prev}\n${evt.data}`.trim());
     ws.onerror = () => setFeed('WebSocket error');

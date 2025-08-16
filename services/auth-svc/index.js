@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const ldap = require('ldapjs');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
