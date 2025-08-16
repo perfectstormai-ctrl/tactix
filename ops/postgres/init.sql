@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS warlog_entries (
   author TEXT,
   message TEXT
 );
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id SERIAL PRIMARY KEY,
+  object_key TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  mimetype TEXT,
+  size INTEGER,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
