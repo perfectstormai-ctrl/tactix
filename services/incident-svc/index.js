@@ -6,6 +6,27 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.get('/health', (_req, res) => res.send('incident ok'));
 
+// List incidents with optional search on title/description
+app.get('/incidents', async (req, res) => {
+  const { q } = req.query;
+  try {
+    let result;
+    if (q) {
+      const term = `%${q}%`;
+      result = await pool.query(
+        'SELECT id, title, description FROM incidents WHERE title ILIKE $1 OR description ILIKE $1 ORDER BY id',
+        [term]
+      );
+    } else {
+      result = await pool.query('SELECT id, title, description FROM incidents ORDER BY id');
+    }
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'database error' });
+  }
+});
+
 // Fetch operation details including units, warlog entries, and XMPP info
 app.get('/operations/:id', async (req, res) => {
   const { id } = req.params;

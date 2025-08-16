@@ -1,8 +1,18 @@
--- Database initialization for campaigns, operations, units, and warlog entries
+-- Database initialization for campaigns, operations, units, incidents, and warlog entries
 CREATE TABLE IF NOT EXISTS campaigns (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS incidents (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT
+);
+
+-- Seed initial incident for development/testing
+INSERT INTO incidents (title, description)
+VALUES ('Fire in Building', 'Report of a fire at the warehouse');
 
 CREATE TABLE IF NOT EXISTS operations (
   id SERIAL PRIMARY KEY,
