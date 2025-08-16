@@ -9,6 +9,7 @@
   "dependencies": {
     "@xmpp/client": "^0.13.1",
     "express": "^4.18.2",
-    "ws": "^8.13.0"
+    "ws": "^8.13.0",
+    "redis": "^4.6.7"
   }
 }
