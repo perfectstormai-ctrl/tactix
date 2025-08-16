@@ -10,7 +10,13 @@ This repository contains a containerized skeleton for the core services:
 - **incident-svc** – event‑sourced incident tracking
 - **tak-ingest-svc** – Cursor-on-Target ingest pipeline
 - **realtime-svc** – WebSocket gateway
+- **warlog-svc** – operational war log service
+- **eng-svc** – engineering chat (ENGNET)
 - **ui** – placeholder web UI
+
+## Development Value
+
+As of August 2025 the codebase contains roughly 3.3 KLOC of TypeScript and JavaScript. Applying the COCOMO model yields an estimated 8.5 person-months of effort, translating to approximately CAD $100k–$150k in development value. Factoring in its federated auth, realtime pipeline, and TAK ingest capabilities, a capability-equivalent rebuild would likely require CAD $200k–$450k.
 
 ## Getting Started
 
