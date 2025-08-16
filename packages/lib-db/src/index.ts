@@ -1,8 +1,9 @@
-import { Client } from 'pg';
+import pkg from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-export { Client };
+export const { Client } = pkg as any;
+export type Client = any;
 
 export function createClient(): Client {
   return new Client({
@@ -10,7 +11,10 @@ export function createClient(): Client {
   });
 }
 
-export async function runMigrations(client: Client, migrationsDir: string): Promise<void> {
+export async function runMigrations(
+  client: any,
+  migrationsDir: string
+): Promise<void> {
   const files = fs.existsSync(migrationsDir)
     ? fs.readdirSync(migrationsDir).sort()
     : [];
