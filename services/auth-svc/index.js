@@ -1,122 +1,87 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const ldap = require('ldapjs');
 
 const app = express();
 app.use(express.json());
 
-// LDAP configuration
-const LDAP_URL = process.env.LDAP_URL || 'ldap://localhost:389';
-const LDAP_BASE_DN = process.env.LDAP_BASE_DN || 'dc=example,dc=com';
-// Template used to construct the user's DN from the username
-const LDAP_USER_DN = process.env.LDAP_USER_DN || 'uid=${username},' + LDAP_BASE_DN;
-
 // JWT configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 
+// Simple in-memory LDAP mock
+// username -> { password, roles }
+const USERS = {
+  alice: { password: 'password123', roles: ['admin'] },
+  bob: { password: 'password', roles: ['user'] }
+};
+
 /**
- * Authenticate a user against LDAP and return an array of group names.
- *
- * The function binds to LDAP using the provided credentials and reads the
- * `memberOf` attribute to determine group membership.
- *
+ * Authenticate a user against the LDAP mock and return roles.
  * @param {string} username
  * @param {string} password
  * @returns {Promise<string[]>}
  */
 function authenticate(username, password) {
   return new Promise((resolve, reject) => {
-    const client = ldap.createClient({ url: LDAP_URL });
-    const userDN = LDAP_USER_DN.replace('${username}', username);
-
-    client.bind(userDN, password, bindErr => {
-      if (bindErr) {
-        client.unbind();
-        return reject(bindErr);
-      }
-
-      // Fetch group memberships from the user's entry
-      client.search(
-        userDN,
-        { scope: 'base', attributes: ['memberOf'] },
-        (searchErr, res) => {
-          if (searchErr) {
-            client.unbind();
-            return reject(searchErr);
-          }
-
-          const groups = [];
-          res.on('searchEntry', entry => {
-            const attr = entry.attributes.find(a => a.type === 'memberOf');
-            if (attr) {
-              attr.values.forEach(v => groups.push(v));
-            }
-          });
-          res.on('error', err => {
-            client.unbind();
-            reject(err);
-          });
-          res.on('end', () => {
-            client.unbind();
-            resolve(groups);
-          });
-        }
-      );
-    });
-  });
-}
-
-/**
- * Middleware to verify JWTs and optionally enforce required groups.
- * @param {string[]} requiredGroups
- */
-function authorize(requiredGroups = []) {
-  return (req, res, next) => {
-    const header = req.headers['authorization'] || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-    if (!token) return res.sendStatus(401);
-
-    try {
-      const payload = jwt.verify(token, JWT_SECRET);
-      if (
-        requiredGroups.length &&
-        !requiredGroups.some(g => (payload.groups || []).includes(g))
-      ) {
-        return res.sendStatus(403);
-      }
-      req.user = payload;
-      next();
-    } catch (err) {
-      res.sendStatus(401);
+    const user = USERS[username];
+    if (!user || user.password !== password) {
+      return reject(new Error('invalid credentials'));
     }
-  };
+    resolve(user.roles);
+  });
 }
 
 // Health endpoint
 app.get('/health', (_req, res) => res.send('auth ok'));
 
-// Login endpoint – authenticate against LDAP and issue a JWT
-app.post('/login', async (req, res) => {
+// Login endpoint – issue access and refresh tokens
+app.post('/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password required' });
   }
 
   try {
-    const groups = await authenticate(username, password);
-    const token = jwt.sign({ sub: username, groups }, JWT_SECRET, {
-      expiresIn: '1h'
+    const roles = await authenticate(username, password);
+    const token = jwt.sign({ sub: username, roles }, JWT_SECRET, {
+      expiresIn: '15m'
     });
-    res.json({ token, groups });
+    const refreshToken = jwt.sign(
+      { sub: username, roles, type: 'refresh' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ token, refreshToken, roles });
   } catch (err) {
     res.status(401).json({ error: 'invalid credentials' });
   }
 });
 
-// Example protected route demonstrating RBAC
-app.get('/profile', authorize(), (req, res) => {
-  res.json({ user: req.user.sub, groups: req.user.groups || [] });
+// Refresh endpoint – validate refresh token and issue new tokens
+app.post('/auth/refresh', (req, res) => {
+  const { refreshToken } = req.body || {};
+  if (!refreshToken) {
+    return res.status(400).json({ error: 'refreshToken required' });
+  }
+
+  try {
+    const payload = jwt.verify(refreshToken, JWT_SECRET);
+    if (payload.type !== 'refresh') throw new Error('invalid token');
+
+    const { sub, roles } = payload;
+    const token = jwt.sign({ sub, roles }, JWT_SECRET, {
+      expiresIn: '15m'
+    });
+    const newRefreshToken = jwt.sign(
+      { sub, roles, type: 'refresh' },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ token, refreshToken: newRefreshToken, roles });
+  } catch (err) {
+    res.status(401).json({ error: 'invalid refresh token' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`auth-svc listening on ${PORT}`));
+
