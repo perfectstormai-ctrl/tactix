@@ -2,9 +2,25 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>TACTIX UI</title>
+    <title>TACTIX</title>
+    <style>
+      body { font-family: sans-serif; margin: 2rem; }
+      h1 { color: #333; }
+      ul { list-style: none; padding: 0; }
+      .service { margin: 0.5rem 0; }
+      .status { font-weight: bold; }
+      pre { background: #f4f4f4; padding: 1rem; }
+    </style>
   </head>
   <body>
-    <h1>TACTIX UI placeholder</h1>
+    <h1>TACTIX Services</h1>
+    <ul id="services">
+      <li class="service" data-url="/auth/health">Auth Service: <span class="status">checking...</span></li>
+      <li class="service" data-url="/api/health">Incident Service: <span class="status">checking...</span></li>
+      <li class="service" data-url="/rt/health">Realtime Service: <span class="status">checking...</span></li>
+    </ul>
+    <h2>Realtime Feed</h2>
+    <pre id="feed">Connecting...</pre>
+    <script src="app.js"></script>
   </body>
 </html>
