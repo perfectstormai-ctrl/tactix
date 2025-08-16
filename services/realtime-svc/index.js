@@ -2,6 +2,7 @@ const express = require('express');
 const WebSocket = require('ws');
 const { Server } = WebSocket;
 const { client, xml } = require('@xmpp/client');
+const { Client } = require('pg');
 
 const app = express();
 app.get('/health', (_req, res) => res.send('realtime ok'));
@@ -13,6 +14,18 @@ const server = app.listen(PORT, () =>
 
 // WebSocket server for browser clients
 const wss = new Server({ server });
+
+// Postgres LISTEN/NOTIFY for comment fan-out
+const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
+pgClient.connect().then(() => pgClient.query('LISTEN comments')).catch(err => console.error('pg connect failed', err));
+pgClient.on('notification', msg => {
+  wss.clients.forEach(wsClient => {
+    if (wsClient.readyState === WebSocket.OPEN) {
+      wsClient.send(msg.payload);
+    }
+  });
+});
+pgClient.on('error', err => console.error('pg error', err));
 
 // Setup XMPP client
 const xmpp = client({

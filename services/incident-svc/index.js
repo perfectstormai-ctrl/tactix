@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
+app.use(express.json());
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.get('/health', (_req, res) => res.send('incident ok'));
@@ -27,6 +28,30 @@ app.get('/operations/:id', async (req, res) => {
       [id]
     );
     res.json({ operation, units, warlog });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'database error' });
+  }
+});
+
+// Create a new warlog entry and publish to listeners
+app.post('/operations/:id/warlog', async (req, res) => {
+  const { id } = req.params;
+  const { author = 'anonymous', message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'message required' });
+  }
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO warlog_entries (operation_id, author, message) VALUES ($1, $2, $3) RETURNING id, ts, author, message',
+      [id, author, message]
+    );
+    const entry = rows[0];
+    await pool.query('SELECT pg_notify($1, $2)', [
+      'comments',
+      JSON.stringify({ operation_id: Number(id), ...entry })
+    ]);
+    res.status(201).json(entry);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'database error' });
