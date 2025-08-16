@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
@@ -31,7 +32,9 @@ function authenticate(username, password) {
 }
 
 // Health endpoint
-app.get('/health', (_req, res) => res.send('auth ok'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
 
 // Login endpoint – issue access and refresh tokens
 app.post('/auth/login', async (req, res) => {

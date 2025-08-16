@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const loadMessages = require('./messageLoader');
 
@@ -10,7 +11,9 @@ async function ensureCache() {
   }
 }
 
-app.get('/health', (_req, res) => res.send('tak ingest ok'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
 
 app.get('/messages', async (req, res) => {
   await ensureCache();

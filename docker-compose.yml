@@ -11,13 +11,24 @@ services:
       - incident-svc
       - realtime-svc
       - warlog-svc
+      - tak-ingest-svc
       - ui
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   auth-svc:
     build: ./services/auth-svc
     env_file:
       - ./ops/env/auth.env
     depends_on:
       - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   incident-svc:
     build: ./services/incident-svc
     env_file:
@@ -26,6 +37,11 @@ services:
       - postgres
       - opensearch
       - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   warlog-svc:
     build: ./services/warlog-svc
     env_file:
@@ -33,6 +49,11 @@ services:
     depends_on:
       - postgres
       - opensearch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   tak-ingest-svc:
     build: ./services/tak-ingest-svc
     env_file:
@@ -40,12 +61,22 @@ services:
     depends_on:
       - postgres
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   realtime-svc:
     build: ./services/realtime-svc
     env_file:
       - ./ops/env/realtime.env
     depends_on:
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   ui:
     build: ./ui
   postgres:

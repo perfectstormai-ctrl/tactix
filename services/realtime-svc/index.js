@@ -1,10 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const WebSocket = require('ws');
 const { Server } = WebSocket;
 const { client, xml } = require('@xmpp/client');
 
 const app = express();
-app.get('/health', (_req, res) => res.send('realtime ok'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
+});
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () =>
