@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "node --test",
+    "test": "NODE_ENV=test node --test",
     "migrate": "node migrate.js",
     "seed": "node seed.js"
   },

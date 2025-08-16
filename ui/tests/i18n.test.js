@@ -12,6 +12,7 @@ i18next.use(initReactI18next).init({
   fallbackLng: 'en',
   interpolation: { escapeValue: false }
 });
+const i18n = i18next;
 
 function Comp() {
   const { t } = useTranslation();

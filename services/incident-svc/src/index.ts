@@ -39,6 +39,26 @@ const objectStore = new Map<string, Buffer>();
 
 let dbClient: Client | null = null;
 
+const REALTIME_URL =
+  process.env.REALTIME_URL || 'http://realtime-svc:3000/events';
+
+// seed demo incident when using in-memory storage (skip during tests)
+if (process.env.NODE_ENV !== 'test') {
+  const incident: Incident = {
+    id: nextIncidentId++,
+    title: 'FOREST FIRE – LAC ST-JEAN',
+    description: 'Wildfire reported near Lac St-Jean. Evacuation ongoing.',
+    severity: 'high',
+    status: 'open',
+    comments: [
+      '16:30 Smoke spotted from watchtower.',
+      '16:45 Units dispatched to investigate.'
+    ],
+    createdAt: new Date(),
+  };
+  incidents.push(incident);
+}
+
 export function setClient(client: Client) {
   dbClient = client;
 }
@@ -57,6 +77,20 @@ async function commitEvent(event: IncidentEvent): Promise<void> {
     } catch (_) {
       /* ignore notify failures */
     }
+  }
+
+  if (event.type === 'COMMENT_ADDED') {
+    const payload = {
+      incidentId: event.incidentId,
+      type: 'COMMENT_ADDED',
+      text: event.payload.comment,
+      time: event.createdAt.toISOString(),
+    };
+    fetch(REALTIME_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
   }
 }
 

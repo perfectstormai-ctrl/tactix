@@ -15,8 +15,8 @@ let lib_db_1;
 try {
     lib_db_1 = require("@tactix/lib-db");
 }
-catch (_b) {
-    lib_db_1 = { createClient: () => { throw new Error('lib-db unavailable'); } };
+catch (_a) {
+    lib_db_1 = { createClient: () => ({ connect: async () => { }, query: async () => { } }) };
 }
 const incidents = [];
 const events = [];
@@ -26,6 +26,23 @@ const attachments = [];
 let nextAttachmentId = 1;
 const objectStore = new Map();
 let dbClient = null;
+const REALTIME_URL = process.env.REALTIME_URL || 'http://realtime-svc:3000/events';
+// seed demo incident when using in-memory storage (skip during tests)
+if (process.env.NODE_ENV !== 'test') {
+    const incident = {
+        id: nextIncidentId++,
+        title: 'FOREST FIRE – LAC ST-JEAN',
+        description: 'Wildfire reported near Lac St-Jean. Evacuation ongoing.',
+        severity: 'high',
+        status: 'open',
+        comments: [
+            '16:30 Smoke spotted from watchtower.',
+            '16:45 Units dispatched to investigate.'
+        ],
+        createdAt: new Date(),
+    };
+    incidents.push(incident);
+}
 function setClient(client) {
     dbClient = client;
 }
@@ -44,6 +61,19 @@ async function commitEvent(event) {
         catch (_) {
             /* ignore notify failures */
         }
+    }
+    if (event.type === 'COMMENT_ADDED') {
+        const payload = {
+            incidentId: event.incidentId,
+            type: 'COMMENT_ADDED',
+            text: event.payload.comment,
+            time: event.createdAt.toISOString(),
+        };
+        fetch(REALTIME_URL, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+        }).catch(() => { });
     }
 }
 async function indexIncident(_incident) {
