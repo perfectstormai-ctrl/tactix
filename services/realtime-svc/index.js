@@ -1,56 +1,114 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const WebSocket = require('ws');
-const { Server } = WebSocket;
-const { client, xml } = require('@xmpp/client');
-
-const app = express();
-app.get('/health', (_req, res) => {
-  res.json({ ok: true });
-});
+const { createClient } = require('@tactix/lib-db');
 
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () =>
-  console.log(`realtime-svc listening on ${PORT}`)
-);
+const INCIDENT_SVC_URL = process.env.INCIDENT_SVC_URL || 'http://incident-svc:3000';
+const MAX_QUEUE = 100;
 
-// WebSocket server for browser clients
-const wss = new Server({ server });
+const app = express();
+app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Setup XMPP client
-const xmpp = client({
-  service: process.env.XMPP_URL,
-  domain: process.env.XMPP_DOMAIN,
-  username: process.env.XMPP_USERNAME,
-  password: process.env.XMPP_PASSWORD,
-});
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ noServer: true });
 
-xmpp.on('error', err => console.error('xmpp error', err));
-
-// Forward incoming XMPP messages to all connected WebSocket clients
-xmpp.on('stanza', stanza => {
-  if (stanza.is('message')) {
-    const body = stanza.getChildText('body');
-    if (body) {
-      wss.clients.forEach(wsClient => {
-        if (wsClient.readyState === WebSocket.OPEN) {
-          wsClient.send(body);
-        }
-      });
-    }
+server.on('upgrade', (req, socket, head) => {
+  if (req.url === '/rt') {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  } else {
+    socket.destroy();
   }
 });
 
-// Start XMPP connection
-xmpp.start().catch(err => console.error('xmpp start failed', err));
+server.listen(PORT, () => {
+  console.log(`realtime-svc listening on ${PORT}`);
+});
 
-// Send messages from WebSocket to XMPP
-wss.on('connection', ws => {
-  ws.on('message', msg => {
-    const to = process.env.XMPP_TO;
-    if (to) {
-      const message = xml('message', { type: 'chat', to }, xml('body', {}, msg.toString()));
-      xmpp.send(message).catch(err => console.error('xmpp send failed', err));
+const db = createClient();
+db.connect()
+  .then(() => db.query('LISTEN tactix_events'))
+  .catch((err) => console.error('db connect failed', err));
+
+db.on('notification', (msg) => {
+  try {
+    const event = JSON.parse(msg.payload);
+    broadcast(event);
+  } catch (e) {
+    console.error('invalid payload', e);
+  }
+});
+
+const clients = new Map();
+
+function broadcast(event) {
+  for (const [ws, state] of clients.entries()) {
+    if (state.incidentId === event.incidentId) {
+      enqueue(ws, state, event);
     }
+  }
+}
+
+function enqueue(ws, state, event) {
+  if (state.queue.length >= MAX_QUEUE) {
+    fetch(`${INCIDENT_SVC_URL}/incidents/${state.incidentId}`)
+      .then((res) => res.json())
+      .then((incident) => {
+        ws.send(JSON.stringify({ type: 'snapshot', incident, seq: event.seq }));
+      })
+      .catch(() => {});
+    state.queue = [];
+    return;
+  }
+  state.queue.push(event);
+  flush(ws, state);
+}
+
+function flush(ws, state) {
+  if (state.sending || ws.readyState !== WebSocket.OPEN) return;
+  const msg = state.queue.shift();
+  if (!msg) return;
+  state.sending = true;
+  ws.send(JSON.stringify(msg), (err) => {
+    state.sending = false;
+    if (err) {
+      ws.close();
+    } else {
+      flush(ws, state);
+    }
+  });
+}
+
+wss.on('connection', (ws) => {
+  const state = { incidentId: null, queue: [], sending: false };
+  clients.set(ws, state);
+
+  ws.on('message', (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
+    if (msg.type === 'subscribe' && typeof msg.incidentId === 'number') {
+      state.incidentId = msg.incidentId;
+      if (typeof msg.seq === 'number') {
+        fetch(`${INCIDENT_SVC_URL}/incidents/${state.incidentId}`)
+          .then((res) => res.json())
+          .then((incident) => {
+            ws.send(
+              JSON.stringify({ type: 'snapshot', incident, seq: msg.seq })
+            );
+          })
+          .catch(() => {});
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    clients.delete(ws);
   });
 });

@@ -43,6 +43,23 @@ export function setClient(client: Client) {
   dbClient = client;
 }
 
+async function commitEvent(event: IncidentEvent): Promise<void> {
+  events.push(event);
+  if (dbClient) {
+    const envelope = {
+      incidentId: event.incidentId,
+      seq: event.id,
+      type: event.type,
+      payload: event.payload,
+    };
+    try {
+      await dbClient.query('NOTIFY tactix_events, $1', [JSON.stringify(envelope)]);
+    } catch (_) {
+      /* ignore notify failures */
+    }
+  }
+}
+
 async function indexIncident(_incident: Incident): Promise<void> {
   // stub for future OpenSearch integration
 }
@@ -137,8 +154,8 @@ export function createServer() {
         payload: { title: body.title, severity: body.severity, description: body.description },
         createdAt: new Date(),
       };
-      events.push(event);
       incidents.push(incident);
+      await commitEvent(event);
       await indexIncident(incident);
       return json(res, 201, incident);
     }
@@ -202,7 +219,7 @@ export function createServer() {
         createdAt: new Date(),
       };
       incident.comments.push(body.comment);
-      events.push(event);
+      await commitEvent(event);
       return json(res, 200, incident);
     }
 
@@ -221,7 +238,7 @@ export function createServer() {
         createdAt: new Date(),
       };
       incident.status = body.status;
-      events.push(event);
+      await commitEvent(event);
       return json(res, 200, incident);
     }
 
@@ -249,7 +266,7 @@ export function createServer() {
         payload: { attachmentId: attachment.id, objectName, filename: file.filename },
         createdAt: new Date(),
       };
-      events.push(event);
+      await commitEvent(event);
       return json(res, 201, attachment);
     }
 

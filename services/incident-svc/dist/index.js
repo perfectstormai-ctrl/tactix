@@ -11,7 +11,13 @@ exports.getObject = getObject;
 const node_http_1 = __importDefault(require("node:http"));
 const node_url_1 = require("node:url");
 const node_crypto_1 = require("node:crypto");
-const lib_db_1 = { createClient: () => { throw new Error('lib-db unavailable'); } };
+let lib_db_1;
+try {
+    lib_db_1 = require("@tactix/lib-db");
+}
+catch (_b) {
+    lib_db_1 = { createClient: () => { throw new Error('lib-db unavailable'); } };
+}
 const incidents = [];
 const events = [];
 let nextIncidentId = 1;
@@ -22,6 +28,23 @@ const objectStore = new Map();
 let dbClient = null;
 function setClient(client) {
     dbClient = client;
+}
+async function commitEvent(event) {
+    events.push(event);
+    if (dbClient) {
+        const envelope = {
+            incidentId: event.incidentId,
+            seq: event.id,
+            type: event.type,
+            payload: event.payload,
+        };
+        try {
+            await dbClient.query('NOTIFY tactix_events, $1', [JSON.stringify(envelope)]);
+        }
+        catch (_) {
+            /* ignore notify failures */
+        }
+    }
 }
 async function indexIncident(_incident) {
     // stub for future OpenSearch integration
@@ -115,8 +138,8 @@ function createServer() {
                 payload: { title: body.title, severity: body.severity, description: body.description },
                 createdAt: new Date(),
             };
-            events.push(event);
             incidents.push(incident);
+            await commitEvent(event);
             await indexIncident(incident);
             return json(res, 201, incident);
         }
@@ -179,7 +202,7 @@ function createServer() {
                 createdAt: new Date(),
             };
             incident.comments.push(body.comment);
-            events.push(event);
+            await commitEvent(event);
             return json(res, 200, incident);
         }
         const statusMatch = url.pathname.match(/^\/incidents\/(\d+)\/status$/);
@@ -199,7 +222,7 @@ function createServer() {
                 createdAt: new Date(),
             };
             incident.status = body.status;
-            events.push(event);
+            await commitEvent(event);
             return json(res, 200, incident);
         }
         const attachmentMatch = url.pathname.match(/^\/incidents\/(\d+)\/attachments$/);
@@ -228,7 +251,7 @@ function createServer() {
                 payload: { attachmentId: attachment.id, objectName, filename: file.filename },
                 createdAt: new Date(),
             };
-            events.push(event);
+            await commitEvent(event);
             return json(res, 201, attachment);
         }
         return json(res, 404, {});
