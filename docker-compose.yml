@@ -10,6 +10,7 @@ services:
       - auth-svc
       - incident-svc
       - realtime-svc
+      - warlog-svc
       - ui
   auth-svc:
     build: ./services/auth-svc
@@ -25,6 +26,12 @@ services:
       - postgres
       - opensearch
       - minio
+  warlog-svc:
+    build: ./services/warlog-svc
+    env_file:
+      - ./ops/env/warlog.env
+    depends_on:
+      - postgres
   tak-ingest-svc:
     build: ./services/tak-ingest-svc
     env_file:
