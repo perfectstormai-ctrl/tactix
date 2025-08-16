@@ -11,13 +11,43 @@ exports.getObject = getObject;
 const node_http_1 = __importDefault(require("node:http"));
 const node_url_1 = require("node:url");
 const node_crypto_1 = require("node:crypto");
-let lib_db_1;
-try {
-    lib_db_1 = require("@tactix/lib-db");
+function requireAuth(req, res, next) {
+    var _a;
+    const header = (_a = req.headers) === null || _a === void 0 ? void 0 : _a['authorization'];
+    if (!header || !header.startsWith('Bearer ')) {
+        res.statusCode = 401;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'unauthorized' }));
+        return;
+    }
+    const token = header.slice(7);
+    try {
+        const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+        req.user = payload;
+        next();
+    }
+    catch (_b) {
+        res.statusCode = 401;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'unauthorized' }));
+    }
 }
-catch (_b) {
-    lib_db_1 = { createClient: () => { throw new Error('lib-db unavailable'); } };
+function requireRole(roles) {
+    return (req, res, next) => {
+        requireAuth(req, res, () => {
+            var _a;
+            const userRoles = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.roles) || [];
+            if (!roles.some((r) => userRoles.includes(r))) {
+                res.statusCode = 403;
+                res.setHeader('content-type', 'application/json');
+                res.end(JSON.stringify({ error: 'forbidden' }));
+                return;
+            }
+            next();
+        });
+    };
 }
+const effective_1 = require("./rbac/effective");
 const incidents = [];
 const events = [];
 let nextIncidentId = 1;
@@ -25,6 +55,9 @@ let nextEventId = 1;
 const attachments = [];
 let nextAttachmentId = 1;
 const objectStore = new Map();
+const operations = [];
+const assignmentsDb = [];
+const roleGrantsDb = [];
 let dbClient = null;
 function setClient(client) {
     dbClient = client;
@@ -104,18 +137,139 @@ function json(res, code, body) {
     res.end(JSON.stringify(body));
 }
 function createServer() {
-    if (!dbClient && process.env.DATABASE_URL) {
-        dbClient = (0, lib_db_1.createClient)();
-        dbClient.connect().catch(() => {
-            dbClient = null;
-        });
-    }
+    // dbClient must be set via setClient in tests; no auto-connect
     return node_http_1.default.createServer(async (req, res) => {
         if (!req.url)
             return json(res, 404, {});
         const url = new node_url_1.URL(req.url, 'http://localhost');
         if (req.method === 'GET' && url.pathname === '/health') {
             return json(res, 200, { ok: true });
+        }
+        const mePerms = req.method === 'GET' && url.pathname === '/me/effective-permissions';
+        if (mePerms) {
+            return requireAuth(req, res, async () => {
+                const operationCode = url.searchParams.get('operationCode');
+                if (!operationCode || !dbClient) {
+                    return json(res, 400, { error: 'operationCode required' });
+                }
+                const opRes = await dbClient.query('SELECT operation_id FROM operations WHERE code=$1', [operationCode]);
+                if (!opRes.rowCount) {
+                    return json(res, 200, { roles: [] });
+                }
+                const opId = opRes.rows[0].operation_id;
+                const assignRes = await dbClient.query('SELECT user_upn, active FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const roleRes = await dbClient.query('SELECT user_upn, role FROM role_grants WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const perms = (0, effective_1.effective)({ upn: req.user.sub, ad_groups: req.user.ad_groups || [] }, operationCode, assignRes.rows, roleRes.rows);
+                return json(res, 200, { roles: Array.from(perms.roles) });
+            });
+        }
+        const permMatch = url.pathname.match(/^\/operations\/([^/]+)\/permissions$/);
+        if (req.method === 'GET' && permMatch && dbClient) {
+            const opId = permMatch[1];
+            return requireAuth(req, res, async () => {
+                const opRes = await dbClient.query('SELECT operation_id, code, title FROM operations WHERE operation_id=$1', [opId]);
+                if (!opRes.rowCount)
+                    return json(res, 404, {});
+                const op = opRes.rows[0];
+                const myAssign = await dbClient.query('SELECT user_upn, active FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const myRoles = await dbClient.query('SELECT user_upn, role FROM role_grants WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const perms = (0, effective_1.effective)({ upn: req.user.sub, ad_groups: req.user.ad_groups || [] }, op.code, myAssign.rows, myRoles.rows);
+                if (!perms.roles.has('READ'))
+                    return json(res, 403, { error: 'forbidden' });
+                const { rows: assignments } = await dbClient.query('SELECT * FROM assignments WHERE operation_id=$1', [opId]);
+                const { rows: roleGrants } = await dbClient.query('SELECT * FROM role_grants WHERE operation_id=$1', [opId]);
+                let outAssignments = assignments;
+                let outRoleGrants = roleGrants;
+                if (!perms.roles.has('ASSIGN')) {
+                    outAssignments = assignments.filter((a) => a.user_upn === req.user.sub);
+                    outRoleGrants = undefined;
+                }
+                const body = {
+                    operation: { id: op.operation_id, code: op.code, title: op.title },
+                    assignments: outAssignments,
+                    canAssign: perms.roles.has('ASSIGN'),
+                };
+                if (perms.roles.has('ASSIGN'))
+                    body.roleGrants = outRoleGrants;
+                return json(res, 200, body);
+            });
+        }
+        const assignMatch = url.pathname.match(/^\/operations\/([^/]+)\/assignments$/);
+        if (req.method === 'POST' && assignMatch && dbClient) {
+            const opId = assignMatch[1];
+            return requireAuth(req, res, async () => {
+                const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
+                if (!opRes.rowCount)
+                    return json(res, 404, {});
+                const code = opRes.rows[0].code;
+                const myAssign = await dbClient.query('SELECT user_upn, active FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const myRoles = await dbClient.query('SELECT user_upn, role FROM role_grants WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const perms = (0, effective_1.effective)({ upn: req.user.sub, ad_groups: req.user.ad_groups || [] }, code, myAssign.rows, myRoles.rows);
+                if (!perms.roles.has('ASSIGN'))
+                    return json(res, 403, { error: 'forbidden' });
+                const body = await readBody(req).catch(() => null);
+                if (!body || !body.userUpn) {
+                    return json(res, 400, { error: 'userUpn required' });
+                }
+                const existing = await dbClient.query('SELECT assignment_id FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, body.userUpn]);
+                let row;
+                if (existing.rowCount) {
+                    await dbClient.query('UPDATE assignments SET position_id=$1, alt_display_name=$2, active=TRUE WHERE assignment_id=$3', [body.positionId || null, body.altDisplayName || null, existing.rows[0].assignment_id]);
+                    row = (await dbClient.query('SELECT * FROM assignments WHERE assignment_id=$1', [existing.rows[0].assignment_id])).rows[0];
+                }
+                else {
+                    const id = (0, node_crypto_1.randomUUID)();
+                    row = (await dbClient.query('INSERT INTO assignments (assignment_id, operation_id, user_upn, position_id, alt_display_name, created_by_upn) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [
+                        id,
+                        opId,
+                        body.userUpn,
+                        body.positionId || null,
+                        body.altDisplayName || null,
+                        req.user.sub,
+                    ])).rows[0];
+                }
+                return json(res, 201, row);
+            });
+        }
+        const assignDelMatch = url.pathname.match(/^\/operations\/([^/]+)\/assignments\/([^/]+)$/);
+        if (req.method === 'DELETE' && assignDelMatch && dbClient) {
+            const opId = assignDelMatch[1];
+            const assignmentId = assignDelMatch[2];
+            return requireAuth(req, res, async () => {
+                const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
+                if (!opRes.rowCount)
+                    return json(res, 404, {});
+                const code = opRes.rows[0].code;
+                const myAssign = await dbClient.query('SELECT user_upn, active FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const myRoles = await dbClient.query('SELECT user_upn, role FROM role_grants WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const perms = (0, effective_1.effective)({ upn: req.user.sub, ad_groups: req.user.ad_groups || [] }, code, myAssign.rows, myRoles.rows);
+                if (!perms.roles.has('ASSIGN'))
+                    return json(res, 403, { error: 'forbidden' });
+                await dbClient.query('UPDATE assignments SET active=FALSE WHERE assignment_id=$1 AND operation_id=$2', [assignmentId, opId]);
+                res.statusCode = 204;
+                return res.end();
+            });
+        }
+        const roleMatch = url.pathname.match(/^\/operations\/([^/]+)\/roles$/);
+        if (req.method === 'POST' && roleMatch && dbClient) {
+            const opId = roleMatch[1];
+            return requireAuth(req, res, async () => {
+                const opRes = await dbClient.query('SELECT code FROM operations WHERE operation_id=$1', [opId]);
+                if (!opRes.rowCount)
+                    return json(res, 404, {});
+                const code = opRes.rows[0].code;
+                const myAssign = await dbClient.query('SELECT user_upn, active FROM assignments WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const myRoles = await dbClient.query('SELECT user_upn, role FROM role_grants WHERE operation_id=$1 AND user_upn=$2', [opId, req.user.sub]);
+                const perms = (0, effective_1.effective)({ upn: req.user.sub, ad_groups: req.user.ad_groups || [] }, code, myAssign.rows, myRoles.rows);
+                if (!perms.roles.has('ASSIGN'))
+                    return json(res, 403, { error: 'forbidden' });
+                const body = await readBody(req).catch(() => null);
+                if (!body || !body.userUpn || !body.role) {
+                    return json(res, 400, { error: 'userUpn and role required' });
+                }
+                const row = (await dbClient.query('INSERT INTO role_grants (grant_id, operation_id, user_upn, role, created_by_upn) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (operation_id, user_upn, role) DO UPDATE SET created_by_upn=$5 RETURNING *', [(0, node_crypto_1.randomUUID)(), opId, body.userUpn, body.role, req.user.sub])).rows[0];
+                return json(res, 201, row);
+            });
         }
         if (req.method === 'POST' && url.pathname === '/incidents') {
             const body = await readBody(req).catch(() => null);
@@ -207,23 +361,25 @@ function createServer() {
         }
         const statusMatch = url.pathname.match(/^\/incidents\/(\d+)\/status$/);
         if (req.method === 'POST' && statusMatch) {
-            const id = Number(statusMatch[1]);
-            const body = await readBody(req).catch(() => null);
-            if (!body || !body.status)
-                return json(res, 400, { error: 'status required' });
-            const incident = incidents.find((i) => i.id === id);
-            if (!incident)
-                return json(res, 404, {});
-            const event = {
-                id: nextEventId++,
-                incidentId: id,
-                type: 'STATUS_CHANGED',
-                payload: { status: body.status },
-                createdAt: new Date(),
-            };
-            incident.status = body.status;
-            await commitEvent(event);
-            return json(res, 200, incident);
+            return requireRole(['dispatcher'])(req, res, async () => {
+                const id = Number(statusMatch[1]);
+                const body = await readBody(req).catch(() => null);
+                if (!body || !body.status)
+                    return json(res, 400, { error: 'status required' });
+                const incident = incidents.find((i) => i.id === id);
+                if (!incident)
+                    return json(res, 404, {});
+                const event = {
+                    id: nextEventId++,
+                    incidentId: id,
+                    type: 'STATUS_CHANGED',
+                    payload: { status: body.status },
+                    createdAt: new Date(),
+                };
+                incident.status = body.status;
+                await commitEvent(event);
+                return json(res, 200, incident);
+            });
         }
         const attachmentMatch = url.pathname.match(/^\/incidents\/(\d+)\/attachments$/);
         if (req.method === 'POST' && attachmentMatch) {

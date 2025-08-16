@@ -1,24 +1,15 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const jwt = require('jsonwebtoken');
-const { generateKeyPairSync } = require('crypto');
-
-// generate key pair for testing before requiring service
-const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-process.env.JWT_PUBLIC_KEY = publicKey.export({ type: 'pkcs1', format: 'pem' });
-
 const {
   createServer,
   getAttachments,
   getEvents,
   getObject,
 } = require('../dist/index.js');
-
-const token = jwt.sign({ sub: 'tester', roles: ['dispatcher'] }, privateKey, {
-  algorithm: 'RS256',
-  expiresIn: '1h',
-});
+const token = Buffer.from(
+  JSON.stringify({ sub: 'tester', roles: ['dispatcher'] })
+).toString('base64');
 
 test('incident endpoints lifecycle', async () => {
   const server = createServer().listen(0);
