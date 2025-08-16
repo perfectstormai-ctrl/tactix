@@ -1,11 +1,16 @@
-import { IncomingMessage, ServerResponse } from 'http';
 import jwt from 'jsonwebtoken';
+
+type IncomingMessage = any;
+type ServerResponse = any;
+
+declare const process: any;
 
 const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
 
 export interface AuthPayload {
   sub: string;
   roles: string[];
+  ad_groups: string[];
 }
 
 export interface AuthenticatedRequest extends IncomingMessage {
@@ -32,7 +37,11 @@ export function requireAuth(
     const payload = jwt.verify(token, PUBLIC_KEY, {
       algorithms: ['RS256'],
     }) as any;
-    req.user = { sub: payload.sub, roles: payload.roles || [] };
+    req.user = {
+      sub: payload.sub,
+      roles: payload.roles || [],
+      ad_groups: payload.ad_groups || [],
+    };
     next();
   } catch (err) {
     return sendJson(res, 401, { error: 'unauthorized' });
