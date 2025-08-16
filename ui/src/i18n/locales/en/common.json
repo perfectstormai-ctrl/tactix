@@ -20,6 +20,12 @@
     "send": "Send",
     "typingPlaceholder": "Chat..."
   },
+  "eng": {
+    "title": "Engineering Chat (ENGNET)",
+    "unofficial": "Unofficial",
+    "send": "Send",
+    "promote": "Promote to Warlog"
+  },
   "global": {
     "loading": "Loading…",
     "error": "Something went wrong.",

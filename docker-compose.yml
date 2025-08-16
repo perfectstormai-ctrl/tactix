@@ -13,6 +13,7 @@ services:
       - warlog-svc
       - tak-ingest-svc
       - ui
+      - eng-svc
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 5s
@@ -77,8 +78,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  eng-svc:
+    build: ./services/eng-svc
+    env_file:
+      - ./ops/env/eng.env
+    depends_on:
+      - postgres
+      - nats
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   ui:
     build: ./ui
+  nats:
+    image: nats:2
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - ./ops/nats.conf:/etc/nats/nats.conf:ro
+    command: ["-c", "/etc/nats/nats.conf"]
   postgres:
     image: postgres:16
     environment:

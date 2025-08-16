@@ -1,3 +1,4 @@
 packages:
   - 'packages/*'
   - 'services/incident-svc'
+  - 'services/eng-svc'
