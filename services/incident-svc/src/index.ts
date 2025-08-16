@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { Client, createClient } from '@tactix/lib-db';
 
 export interface Incident {
   id: number;
@@ -35,6 +36,16 @@ let nextEventId = 1;
 const attachments: Attachment[] = [];
 let nextAttachmentId = 1;
 const objectStore = new Map<string, Buffer>();
+
+let dbClient: Client | null = null;
+
+export function setClient(client: Client) {
+  dbClient = client;
+}
+
+async function indexIncident(_incident: Incident): Promise<void> {
+  // stub for future OpenSearch integration
+}
 
 async function readBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -91,6 +102,12 @@ function json(res: http.ServerResponse, code: number, body: any) {
 }
 
 export function createServer() {
+  if (!dbClient && process.env.DATABASE_URL) {
+    dbClient = createClient();
+    dbClient.connect().catch(() => {
+      dbClient = null;
+    });
+  }
   return http.createServer(async (req, res) => {
     if (!req.url) return json(res, 404, {});
     const url = new URL(req.url, 'http://localhost');
@@ -122,23 +139,44 @@ export function createServer() {
       };
       events.push(event);
       incidents.push(incident);
+      await indexIncident(incident);
       return json(res, 201, incident);
     }
 
     if (req.method === 'GET' && url.pathname === '/incidents') {
-      const status = url.searchParams.get('status');
-      const q = url.searchParams.get('q');
-      let list = incidents.slice();
-      if (status) list = list.filter((i) => i.status === status);
-      if (q) {
-        const needle = q.toLowerCase();
-        list = list.filter(
-          (i) =>
-            i.title.toLowerCase().includes(needle) ||
-            (i.description ?? '').toLowerCase().includes(needle)
-        );
+      const status = url.searchParams.get('status') ?? undefined;
+      const q = url.searchParams.get('q') ?? undefined;
+      if (dbClient) {
+        const params: any[] = [];
+        let sql =
+          'SELECT id, title, description, severity, status, comments, created_at AS "createdAt" FROM incidents';
+        const clauses: string[] = [];
+        if (status) {
+          params.push(status);
+          clauses.push(`status = $${params.length}`);
+        }
+        if (q) {
+          params.push(`%${q}%`, `%${q}%`);
+          const a = params.length - 1;
+          const b = params.length;
+          clauses.push(`(title ILIKE $${a} OR COALESCE(description, '') ILIKE $${b})`);
+        }
+        if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+        const { rows } = await dbClient.query(sql, params);
+        return json(res, 200, rows);
+      } else {
+        let list = incidents.slice();
+        if (status) list = list.filter((i) => i.status === status);
+        if (q) {
+          const needle = q.toLowerCase();
+          list = list.filter(
+            (i) =>
+              i.title.toLowerCase().includes(needle) ||
+              (i.description ?? '').toLowerCase().includes(needle)
+          );
+        }
+        return json(res, 200, list);
       }
-      return json(res, 200, list);
     }
 
     const incidentIdMatch = url.pathname.match(/^\/incidents\/(\d+)$/);
