@@ -11,7 +11,7 @@ Last updated: 2025-08-16 (America/Toronto)
 TACTIX is an incident management and collaboration system for tactical operations.
 
 Guiding principles:
-- Deliver **small, additive slices**. No mega-PRs. No large deletions without approval.
+- Deliver features as needed; large PRs are allowed, though large deletions still require approval.
 - Optimize for **operator clarity** under stress: simple workflows, reliable real-time updates.
 - **RBAC is managed in-app** (not in LDAP). LDAP is for authentication only.
 - Support **EN/FR localization** in the UI for all visible strings.
@@ -123,10 +123,10 @@ When you implement it, keep ENGNET separate.
 ---
 
 ## 9) PR & Commit Rules
-- One slice per PR (target: ≤300 LOC diff).
+- Large PRs are permitted; ensure they are well-structured and documented.
 - No mass deletions without explicit approval in the PR description.
 - Include:
-  - Summary of the slice.
+  - Summary of the changes.
   - Affected services and endpoints.
   - DB migration notes and backward compatibility statement.
   - Test plan and acceptance checklist.
@@ -145,7 +145,7 @@ When you implement it, keep ENGNET separate.
 ---
 
 ## 11) Task Templates (for issues or agent prompts)
-Minimal feature slice:
+Feature specification template:
 - Title: feat(<service>): <what>
 - Goal: one paragraph describing the user-visible outcome.
 - Changes:
@@ -182,7 +182,7 @@ Example (ENGNET POST path):
 
 ## 14) What NOT to do
 - Don’t couple ENGNET to XMPP or auto-log ENGNET messages to Warlog.
-- Don’t remove services or big chunks of code to “simplify” a slice.
+- Don’t remove services or big chunks of code to “simplify” a change.
 - Don’t merge without healthchecks and compose passing.
 - Don’t introduce ABAC/labeling until the RBAC baseline is stable.
 
