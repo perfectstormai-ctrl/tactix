@@ -17,14 +17,15 @@ This repository contains a containerized skeleton for the core services:
 ## Quick Start (Dev)
 
 ### Prerequisites
+- Node 18+
 - Docker
-- Node 20
-- pnpm (via corepack)
 
 ### Steps
 ```bash
 corepack enable
-pnpm -r install
+pnpm install
+pnpm -r build
+pnpm -r test
 docker compose up --build
 ```
 
@@ -53,7 +54,7 @@ Each service exposes a basic `/health` endpoint.
 Node packages use simple test scripts:
 
 ```bash
-npm test
+pnpm test
 ```
 
 These are placeholders until real tests are added.

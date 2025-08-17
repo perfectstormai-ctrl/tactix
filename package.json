@@ -7,5 +7,6 @@
     "test": "pnpm -r test",
     "test:ci": "pnpm -r test",
     "migrate": "pnpm -r migrate"
-  }
+  },
+  "packageManager": "pnpm@9.0.0"
 }
