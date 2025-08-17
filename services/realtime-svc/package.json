@@ -5,7 +5,7 @@
   "scripts": {
     "build": "echo 'no build'",
     "start": "node index.js",
-    "test": "echo \"No tests\""
+    "test": "node --test"
   },
   "dependencies": {
     "@tactix/authz": "workspace:*",

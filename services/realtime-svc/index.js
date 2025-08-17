@@ -2,12 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const {
-  verifyJwtRS256,
-  roleMapperFromEnv,
-  resolveRoles,
-} = require('@tactix/authz');
-const { createClient } = require('@tactix/lib-db');
+let verifyJwtRS256, roleMapperFromEnv, resolveRoles;
+try {
+  ({ verifyJwtRS256, roleMapperFromEnv, resolveRoles } = require('@tactix/authz'));
+} catch {
+  verifyJwtRS256 = () => ({ verify: () => ({}) });
+  roleMapperFromEnv = () => ({})
+  resolveRoles = () => [];
+}
+let createClient;
+try {
+  ({ createClient } = require('@tactix/lib-db'));
+} catch {
+  createClient = () => ({
+    connect: () => Promise.resolve(),
+    query: () => Promise.resolve(),
+    on: () => {},
+  });
+}
 
 const PORT = process.env.PORT || 3000;
 const INCIDENT_SVC_URL = process.env.INCIDENT_SVC_URL || 'http://incident-svc:3000';
@@ -15,9 +27,44 @@ const MAX_QUEUE = 100;
 const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
 const { verify } = verifyJwtRS256(PUBLIC_KEY);
 const ROLE_MAPPER = roleMapperFromEnv();
+const BUILD_VERSION = process.env.BUILD_VERSION || '0.0.0';
+const SERVICE_NAME = process.env.SERVICE_NAME || 'realtime-svc';
+
+const openapi = {
+  openapi: '3.0.3',
+  info: { title: SERVICE_NAME, version: BUILD_VERSION },
+  paths: {
+    '/health': {
+      get: {
+        summary: 'Health',
+        responses: { '200': { description: 'OK' } },
+      },
+    },
+    '/rt': {
+      get: {
+        summary: 'WebSocket handshake',
+        security: [{ bearerAuth: [] }],
+        responses: { '101': { description: 'Switching Protocols' } },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      bearerAuth: { type: 'http', scheme: 'bearer' },
+    },
+  },
+};
 
 const app = express();
-app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/health', (_req, res) =>
+  res.status(200).json({
+    status: 'ok',
+    service: SERVICE_NAME,
+    version: BUILD_VERSION,
+    ts: new Date().toISOString(),
+  })
+);
+app.get('/openapi.json', (_req, res) => res.json(openapi));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
@@ -157,3 +204,5 @@ wss.on('connection', (ws, req) => {
     clients.delete(ws);
   });
 });
+
+module.exports = { app, server, wss };

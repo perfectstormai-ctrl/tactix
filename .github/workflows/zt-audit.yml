@@ -8,13 +8,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
+          standalone: true
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '18'
           cache: 'pnpm'
-      - run: corepack enable
-      - run: pnpm -r install
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Security audit (prod)
+        run: pnpm audit --prod --audit-level=high
       - run: pnpm zt:audit:ci

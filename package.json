@@ -9,5 +9,6 @@
     "migrate": "pnpm -r migrate",
     "zt:audit": "node tools/zt-audit.mjs",
     "zt:audit:ci": "node tools/zt-audit.mjs --ci"
-  }
+  },
+  "packageManager": "pnpm@9.0.0"
 }
