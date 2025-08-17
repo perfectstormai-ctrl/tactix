@@ -5,6 +5,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
     "test": "pnpm -r test",
+    "test:ci": "pnpm -r test",
     "migrate": "pnpm -r migrate"
   }
 }

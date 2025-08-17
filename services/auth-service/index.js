@@ -71,7 +71,16 @@ function ldapAuthenticate(upn, password) {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, ts: new Date().toISOString() });
+});
+
+app.get('/openapi.json', (_req, res) => {
+  // Serve static OpenAPI definition for this service
+  // Keeping it simple and synchronous as the document is small
+  // and does not require dynamic generation.
+  // eslint-disable-next-line global-require
+  const spec = require('./openapi.json');
+  res.json(spec);
 });
 
 app.post('/login', async (req, res) => {
@@ -119,6 +128,10 @@ app.post('/refresh', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`auth-service listening on ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`auth-service listening on ${PORT}`);
+  });
+}
+
+module.exports = app;
