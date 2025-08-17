@@ -1,7 +1,7 @@
 # TACTIX
 
 ## Description
-TACTIX (Tactical Awareness and Communications Tracking for Incident eXchange) is a modular, containerized platform for tracking and sharing incident data in real time. The project provides a Minimum Viable Slice (MVS) that stitches together the core services required for ingest, authentication, incident tracking and collaborative presentation.
+TACTIX (Tactical Assistance and Communications Tracking for Incident eXchange) is a modular, containerized platform for tracking and sharing incident data in real time. The project provides a Minimum Viable Product (MVP) that stitches together the core services required for ingest, authentication, incident tracking and collaborative presentation.
 
 This repository contains a containerized skeleton for the core services:
 
