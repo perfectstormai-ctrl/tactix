@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "echo 'no tests'"
+    "test": "echo 'no tests'",
+    "migrate": "node migrate.js"
   },
   "dependencies": {
     "express": "^4.19.2",
