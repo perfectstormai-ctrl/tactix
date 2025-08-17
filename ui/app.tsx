@@ -5,6 +5,7 @@ import LanguageSwitcher from './src/components/LanguageSwitcher.tsx';
 import NewMessageCard from './src/components/NewMessageCard.tsx';
 import EngChatPanel from './src/components/EngChatPanel.tsx';
 import GlobalBanner from './src/components/GlobalBanner.tsx';
+import IncidentWorkspacePage from './src/components/IncidentWorkspacePage.tsx';
 import { notifyStore } from './src/lib/notify.ts';
 import i18n from './src/i18n/index.ts';
 import { formatTime } from './src/i18n/format.ts';
@@ -119,6 +120,14 @@ function App() {
           token={token}
           incidentId={detailId}
           onBack={() => setView('list')}
+          onWorkspace={() => setView('workspace')}
+        />
+      )}
+      {view === 'workspace' && (
+        <IncidentWorkspacePage
+          token={token}
+          incidentId={detailId}
+          onBack={() => setView('detail')}
         />
       )}
     </div>
@@ -279,7 +288,7 @@ function IncidentList({ token, onSelect, onLogout }) {
   );
 }
 
-function IncidentDetail({ token, incidentId, onBack }) {
+function IncidentDetail({ token, incidentId, onBack, onWorkspace }) {
   const { t } = useTranslation();
   const [incident, setIncident] = useState(null);
   const [comment, setComment] = useState('');
@@ -421,9 +430,17 @@ function IncidentDetail({ token, incidentId, onBack }) {
 
   return (
     <div className="space-y-4">
-      <button className="text-blue-600 underline" onClick={onBack}>
-        &larr; Back
-      </button>
+      <div className="flex gap-2">
+        <button className="text-blue-600 underline" onClick={onBack}>
+          &larr; Back
+        </button>
+        <button
+          className="text-blue-600 underline"
+          onClick={onWorkspace}
+        >
+          {t('workspace.title')}
+        </button>
+      </div>
       {incident && (
         <div>
           <h2 className="text-lg font-semibold">{incident.title}</h2>

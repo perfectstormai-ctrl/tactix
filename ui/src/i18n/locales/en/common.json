@@ -40,5 +40,31 @@
     "cancel": "Cancel",
     "submit": "Trigger",
     "triggered": "Playbook triggered"
+  },
+  "workspace": {
+    "title": "Workspace",
+    "chat": {
+      "title": "Incident Chat",
+      "placeholder": "Type a message",
+      "send": "Send"
+    },
+    "tasks": {
+      "title": "Tasks",
+      "new": "New Task",
+      "assignee": "Assignee UPN",
+      "role": "Role",
+      "status": "Status"
+    },
+    "activity": {
+      "title": "Activity"
+    }
+  },
+  "task": {
+    "status": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    }
   }
 }
