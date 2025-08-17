@@ -1,0 +1,51 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "auth-service",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "summary": "Authenticate and receive JWTs",
+        "responses": {
+          "200": {
+            "description": "JWT pair"
+          },
+          "400": {
+            "description": "Missing credentials"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "responses": {
+          "200": {
+            "description": "New access token"
+          },
+          "400": {
+            "description": "Missing token"
+          },
+          "401": {
+            "description": "Invalid refresh token"
+          }
+        }
+      }
+    }
+  }
+}
