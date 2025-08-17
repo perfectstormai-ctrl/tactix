@@ -1,0 +1,1 @@
+{ "id":"critical_fireline_breach", "name":"Fireline Breach (Critical)", "summary":"Immediate action for sector chiefs", "defaultMessage":"Fireline compromised. Execute fallback line.", "defaultSeverity":"critical" }

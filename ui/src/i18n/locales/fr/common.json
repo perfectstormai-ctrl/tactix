@@ -32,5 +32,13 @@
     "search": "Recherche",
     "status": "Statut",
     "severity": "Gravité"
+  },
+  "playbook": {
+    "trigger": "Déclencher le playbook",
+    "select": "Choisir un playbook",
+    "message": "Message",
+    "cancel": "Annuler",
+    "submit": "Déclencher",
+    "triggered": "Playbook déclenché"
   }
 }

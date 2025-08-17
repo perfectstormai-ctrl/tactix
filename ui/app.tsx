@@ -4,6 +4,8 @@
 import LanguageSwitcher from './src/components/LanguageSwitcher.tsx';
 import NewMessageCard from './src/components/NewMessageCard.tsx';
 import EngChatPanel from './src/components/EngChatPanel.tsx';
+import GlobalBanner from './src/components/GlobalBanner.tsx';
+import { notifyStore } from './src/lib/notify.ts';
 import i18n from './src/i18n/index.ts';
 import { formatTime } from './src/i18n/format.ts';
 
@@ -56,8 +58,32 @@ function App() {
     return () => clearInterval(id);
   }, [refreshToken]);
 
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${protocol}://${window.location.host}/rt`);
+    ws.onmessage = (evt) => {
+      let msg;
+      try {
+        msg = JSON.parse(evt.data);
+      } catch {
+        return;
+      }
+      if (msg.type === 'PLAYBOOK_NOTIFY') {
+        notifyStore.push({
+          id: crypto.randomUUID?.() || String(Date.now()),
+          severity: msg.severity || 'info',
+          title: msg.title || 'Playbook',
+          text: msg.text || '',
+          at: msg.occurredAt || new Date().toISOString(),
+        });
+      }
+    };
+    return () => ws.close();
+  }, []);
+
   return (
     <div className="p-4 space-y-4">
+      <GlobalBanner />
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">TACTIX</h1>
         <div className="flex items-center gap-4">
@@ -259,6 +285,11 @@ function IncidentDetail({ token, incidentId, onBack }) {
   const [comment, setComment] = useState('');
   const [warlog, setWarlog] = useState([]);
   const logRef = useRef<HTMLDivElement | null>(null);
+  const [pbOpen, setPbOpen] = useState(false);
+  const [playbooks, setPlaybooks] = useState([]);
+  const [pbId, setPbId] = useState('');
+  const [pbMsg, setPbMsg] = useState('');
+  const [pbSeverity, setPbSeverity] = useState('info');
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -289,6 +320,13 @@ function IncidentDetail({ token, incidentId, onBack }) {
       div.scrollTop = div.scrollHeight;
     }
   }, [warlog]);
+
+  useEffect(() => {
+    if (!pbOpen) return;
+    fetch('/playbooks', { headers })
+      .then((res) => res.json())
+      .then((data) => setPlaybooks(data.playbooks || []));
+  }, [pbOpen]);
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -363,6 +401,24 @@ function IncidentDetail({ token, incidentId, onBack }) {
     }).then(() => setComment(''));
   };
 
+  const triggerPb = (e) => {
+    e.preventDefault();
+    if (!pbId) return;
+    fetch(`/playbooks/${pbId}/trigger`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json', 'X-Actor-Upn': 'do@example.com' },
+      body: JSON.stringify({ incidentId, message: pbMsg || undefined, severity: pbSeverity }),
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then(() => {
+        alert(t('playbook.triggered'));
+        setPbOpen(false);
+        setPbMsg('');
+        setPbSeverity('info');
+        setPbId('');
+      });
+  };
+
   return (
     <div className="space-y-4">
       <button className="text-blue-600 underline" onClick={onBack}>
@@ -377,6 +433,12 @@ function IncidentDetail({ token, incidentId, onBack }) {
           <p>
             {t('global.status')}: {incident.status}
           </p>
+          <button
+            className="mt-2 bg-amber-500 text-white px-2 py-1 rounded"
+            onClick={() => setPbOpen(true)}
+          >
+            {t('playbook.trigger')}
+          </button>
         </div>
       )}
       <div>
@@ -412,6 +474,48 @@ function IncidentDetail({ token, incidentId, onBack }) {
           </button>
         </div>
       </form>
+      {pbOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <form onSubmit={triggerPb} className="bg-white p-4 rounded space-y-2 w-80">
+            <h3 className="font-semibold">{t('playbook.trigger')}</h3>
+            <select
+              className="border rounded p-1 w-full"
+              value={pbId}
+              onChange={(e) => setPbId(e.target.value)}
+            >
+              <option value="">{t('playbook.select')}</option>
+              {playbooks.map((pb) => (
+                <option key={pb.id} value={pb.id}>
+                  {pb.name}
+                </option>
+              ))}
+            </select>
+            <textarea
+              className="border rounded p-1 w-full"
+              placeholder={t('playbook.message')}
+              value={pbMsg}
+              onChange={(e) => setPbMsg(e.target.value)}
+            />
+            <select
+              className="border rounded p-1 w-full"
+              value={pbSeverity}
+              onChange={(e) => setPbSeverity(e.target.value)}
+            >
+              <option value="info">info</option>
+              <option value="warning">warning</option>
+              <option value="critical">critical</option>
+            </select>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setPbOpen(false)}>
+                {t('playbook.cancel')}
+              </button>
+              <button type="submit" className="bg-blue-600 text-white px-3 rounded">
+                {t('playbook.submit')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

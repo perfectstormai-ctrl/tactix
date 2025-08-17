@@ -1,0 +1,1 @@
+{ "id":"alert_all", "name":"Alert All Stations", "summary":"Broadcast alert banner to all operators", "defaultMessage":"All stations, stand by.", "defaultSeverity":"warning" }

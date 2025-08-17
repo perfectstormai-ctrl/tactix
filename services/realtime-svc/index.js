@@ -46,7 +46,7 @@ const clients = new Map();
 
 function broadcast(event) {
   for (const [ws, state] of clients.entries()) {
-    if (state.incidentId === event.incidentId) {
+    if (event.type === 'PLAYBOOK_NOTIFY' || state.incidentId === event.incidentId) {
       enqueue(ws, state, event);
     }
   }
