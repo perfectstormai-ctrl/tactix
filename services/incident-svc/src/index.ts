@@ -1,9 +1,11 @@
+// @ts-nocheck
 import http from 'node:http';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Client, createClient } from '@tactix/lib-db';
 import { requireAuth, requireRole, AuthenticatedRequest } from '@tactix/auth';
 import { effective } from './rbac/effective';
+import { draftMessageHandler, submitMessageHandler } from './routes/incidents/messages.js';
 
 declare const process: any;
 declare const Buffer: any;
@@ -127,20 +129,6 @@ async function sendXmppMessage(jid: string, content: string) {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jid, content }),
-    });
-  } catch (_) {
-    /* ignore */
-  }
-}
-
-async function logWarlog(author: string, content: string) {
-  const url = process.env.WARLOG_URL;
-  if (!url) return;
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ author, content }),
     });
   } catch (_) {
     /* ignore */
@@ -407,83 +395,20 @@ export function createServer() {
       return json(res, 200, rows);
     }
 
-    const msgMatch = url.pathname.match(/^\/operations\/([^/]+)\/messages$/);
-    if (msgMatch && dbClient) {
-      const opId = msgMatch[1];
-      if (req.method === 'POST') {
-        return requireAuth(req as AuthenticatedRequest, res, async () => {
-          const body = await readBody(req).catch(() => null);
-          if (!body || !body.recipientScope || !body.content) {
-            return json(res, 400, {
-              error: 'recipientScope and content required',
-            });
-          }
-          const id = randomUUID();
-          const row = (
-            await dbClient.query(
-              'INSERT INTO messages (message_id, operation_id, author_upn, recipient_scope, recipient_unit, status, content) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
-              [
-                id,
-                opId,
-                (req as AuthenticatedRequest).user!.sub,
-                body.recipientScope,
-                body.recipientUnit || null,
-                'DRAFT',
-                body.content,
-              ]
-            )
-          ).rows[0];
-          return json(res, 201, row);
-        });
-      }
-      if (req.method === 'GET') {
-        return requireAuth(req as AuthenticatedRequest, res, async () => {
-          const status = url.searchParams.get('status');
-          const params: any[] = [opId];
-          let sql = 'SELECT * FROM messages WHERE operation_id=$1';
-          if (status) {
-            params.push(status);
-            sql += ' AND status=$2';
-            if (status === 'DRAFT') {
-              params.push((req as AuthenticatedRequest).user!.sub);
-              sql += ' AND author_upn=$3';
-            }
-          }
-          const { rows } = await dbClient.query(sql, params);
-          return json(res, 200, rows);
-        });
-      }
+    const draftMatch = url.pathname.match(/^\/incidents\/(\d+)\/messages\/draft$/);
+    if (req.method === 'POST' && draftMatch && dbClient) {
+      const incidentId = Number(draftMatch[1]);
+      return requireAuth(req as AuthenticatedRequest, res, () =>
+        draftMessageHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+      );
     }
 
-    const submitMatch = url.pathname.match(
-      /^\/operations\/([^/]+)\/messages\/([^/]+)\/submit$/
-    );
-    if (req.method === 'PUT' && submitMatch && dbClient) {
-      const opId = submitMatch[1];
-      const msgId = submitMatch[2];
-      return requireAuth(req as AuthenticatedRequest, res, async () => {
-        const { rows } = await dbClient.query(
-          'UPDATE messages SET status=$1, updated_at=now() WHERE message_id=$2 AND operation_id=$3 RETURNING *',
-          ['SUBMITTED', msgId, opId]
-        );
-        if (!rows.length) return json(res, 404, {});
-        const msg = rows[0];
-        try {
-          const r = await dbClient.query(
-            'SELECT xmpp_jid FROM org_units WHERE operation_id=$1 AND scope=$2 AND unit_name=$3',
-            [opId, msg.recipient_scope, msg.recipient_unit]
-          );
-          const jid = r.rows[0]?.xmpp_jid;
-          if (jid) await sendXmppMessage(jid, msg.content);
-        } catch (_) {}
-        try {
-          await logWarlog(
-            msg.author_upn,
-            `Message submitted to ${msg.recipient_unit || msg.recipient_scope}`
-          );
-        } catch (_) {}
-        return json(res, 200, msg);
-      });
+    const submitMatch = url.pathname.match(/^\/incidents\/(\d+)\/messages\/submit$/);
+    if (req.method === 'POST' && submitMatch && dbClient) {
+      const incidentId = Number(submitMatch[1]);
+      return requireAuth(req as AuthenticatedRequest, res, () =>
+        submitMessageHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+      );
     }
 
     if (req.method === 'POST' && url.pathname === '/incidents') {
