@@ -2,3 +2,5 @@ node_modules
 npm-debug.log
 dist
 !services/incident-svc/dist/
+
+zt-audit.json
