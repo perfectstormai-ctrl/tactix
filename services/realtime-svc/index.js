@@ -2,11 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const { decodeJwt } = require('@tactix/authz');
 const { createClient } = require('@tactix/lib-db');
 
 const PORT = process.env.PORT || 3000;
 const INCIDENT_SVC_URL = process.env.INCIDENT_SVC_URL || 'http://incident-svc:3000';
 const MAX_QUEUE = 100;
+const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
 
 const app = express();
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -14,8 +16,36 @@ app.get('/health', (_req, res) => res.json({ ok: true }));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
+function extractToken(req) {
+  const proto = req.headers['sec-websocket-protocol'];
+  if (proto) {
+    const parts = proto.split(',').map((p) => p.trim());
+    if (parts[0] === 'bearer' && parts[1]) return parts[1];
+  }
+  try {
+    const url = new URL(req.url, 'http://localhost');
+    const q = url.searchParams.get('token');
+    if (q) return q;
+  } catch {}
+  return null;
+}
+
 server.on('upgrade', (req, socket, head) => {
-  if (req.url === '/rt') {
+  const path = req.url.split('?')[0];
+  if (path === '/rt' || path === '/') {
+    const token = extractToken(req);
+    if (!token) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    try {
+      req.user = decodeJwt(token, PUBLIC_KEY);
+    } catch {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit('connection', ws, req);
     });
@@ -82,8 +112,8 @@ function flush(ws, state) {
   });
 }
 
-wss.on('connection', (ws) => {
-  const state = { incidentId: null, queue: [], sending: false };
+wss.on('connection', (ws, req) => {
+  const state = { incidentId: null, queue: [], sending: false, user: req.user };
   clients.set(ws, state);
 
   ws.on('message', (data) => {
