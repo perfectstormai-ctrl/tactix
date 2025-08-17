@@ -32,5 +32,13 @@
     "search": "Search",
     "status": "Status",
     "severity": "Severity"
+  },
+  "playbook": {
+    "trigger": "Trigger Playbook",
+    "select": "Select Playbook",
+    "message": "Message",
+    "cancel": "Cancel",
+    "submit": "Trigger",
+    "triggered": "Playbook triggered"
   }
 }

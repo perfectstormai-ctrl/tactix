@@ -21,6 +21,8 @@ services:
         condition: service_healthy
       eng-svc:
         condition: service_healthy
+      playbook-svc:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 10s
@@ -102,6 +104,23 @@ services:
       - "3003:3003"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  playbook-svc:
+    build:
+      context: ./services/playbook-svc
+    environment:
+      - PORT=3005
+      - PGURL=postgres://tactix:tactix@postgres:5432/tactix
+      - ORG_CODE=1R22eR
+    volumes:
+      - ./playbooks:/app/playbooks:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
       interval: 10s
       timeout: 3s
       retries: 10

@@ -19,13 +19,13 @@ function Comp() {
 }
 
 let html = ReactDOMServer.renderToString(
-  React.createElement(I18nextProvider, { i18n }, React.createElement(Comp))
+  React.createElement(I18nextProvider, { i18n: i18next }, React.createElement(Comp))
 );
 assert(html.includes('Language'));
 
 i18next.changeLanguage('fr');
 html = ReactDOMServer.renderToString(
-  React.createElement(I18nextProvider, { i18n }, React.createElement(Comp))
+  React.createElement(I18nextProvider, { i18n: i18next }, React.createElement(Comp))
 );
 assert(html.includes('Langue'));
 
