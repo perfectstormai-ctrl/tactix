@@ -6,6 +6,8 @@
     "dev": "pnpm -r dev",
     "test": "pnpm -r test",
     "test:ci": "pnpm -r test",
-    "migrate": "pnpm -r migrate"
+    "migrate": "pnpm -r migrate",
+    "zt:audit": "node tools/zt-audit.mjs",
+    "zt:audit:ci": "node tools/zt-audit.mjs --ci"
   }
 }
