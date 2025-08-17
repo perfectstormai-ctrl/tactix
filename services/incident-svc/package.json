@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@tactix/lib-db": "workspace:*",
-    "@tactix/auth": "workspace:*",
+    "@tactix/authz": "workspace:*",
     "@tactix/types": "workspace:*",
     "express": "^4.18.2",
     "dotenv": "^16.4.5",

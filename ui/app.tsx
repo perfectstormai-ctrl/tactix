@@ -332,7 +332,7 @@ function IncidentDetail({ token, incidentId, onBack, onWorkspace }) {
 
   useEffect(() => {
     if (!pbOpen) return;
-    fetch('/playbooks', { headers })
+    fetch('/api/playbooks', { headers })
       .then((res) => res.json())
       .then((data) => setPlaybooks(data.playbooks || []));
   }, [pbOpen]);
@@ -413,7 +413,7 @@ function IncidentDetail({ token, incidentId, onBack, onWorkspace }) {
   const triggerPb = (e) => {
     e.preventDefault();
     if (!pbId) return;
-    fetch(`/playbooks/${pbId}/trigger`, {
+    fetch(`/api/playbooks/${pbId}/run`, {
       method: 'POST',
       headers: { ...headers, 'content-type': 'application/json', 'X-Actor-Upn': 'do@example.com' },
       body: JSON.stringify({ incidentId, message: pbMsg || undefined, severity: pbSeverity }),

@@ -12,7 +12,8 @@
   "dependencies": {
     "express": "^4.19.2",
     "pg": "^8.11.5",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@tactix/authz": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
