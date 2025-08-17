@@ -1,0 +1,21 @@
+version: '3.9'
+
+services:
+  gateway:
+    extends:
+      file: ../docker-compose.yml
+      service: gateway
+    profiles: ["zt"]
+    environment:
+      SERVICES_REQUIRE_MTLS: "true"
+    volumes:
+      - ../ops/certs:/certs:ro
+  auth-service:
+    extends:
+      file: ../docker-compose.yml
+      service: auth-service
+    profiles: ["zt"]
+    environment:
+      SERVICES_REQUIRE_MTLS: "true"
+    volumes:
+      - ../ops/certs:/certs:ro
