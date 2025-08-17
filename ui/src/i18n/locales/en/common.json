@@ -7,7 +7,14 @@
     "chatPlaceholder": "Chat...",
     "language": "Language",
     "english": "English",
-    "french": "Français"
+    "french": "Français",
+    "notifications": "Notifications",
+    "incidents": "Incidents",
+    "orders": "Orders",
+    "playbooks": "Playbooks",
+    "schedule": "Schedule",
+    "chat": "Chat",
+    "logout": "Logout"
   },
   "warlog": {
     "title": "Warlog",
@@ -40,6 +47,25 @@
     "cancel": "Cancel",
     "submit": "Trigger",
     "triggered": "Playbook triggered"
+  },
+  "incidents": {
+    "title": "Incident Dashboard",
+    "create": "Create New Incident",
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "resolved": "Resolved",
+      "mine": "Assigned to me"
+    }
+  },
+  "incident": {
+    "tabs": {
+      "overview": "Overview",
+      "chat": "Chat",
+      "tasks": "Tasks",
+      "playbooks": "Playbooks",
+      "orders": "Orders"
+    }
   },
   "workspace": {
     "title": "Workspace",

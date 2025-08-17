@@ -7,7 +7,14 @@
     "chatPlaceholder": "Discussion...",
     "language": "Langue",
     "english": "Anglais",
-    "french": "Français"
+    "french": "Français",
+    "notifications": "Notifications",
+    "incidents": "Incidents",
+    "orders": "Ordres",
+    "playbooks": "Playbooks",
+    "schedule": "Horaire",
+    "chat": "Chat",
+    "logout": "Déconnexion"
   },
   "warlog": {
     "title": "Journal de guerre",
@@ -40,6 +47,25 @@
     "cancel": "Annuler",
     "submit": "Déclencher",
     "triggered": "Playbook déclenché"
+  },
+  "incidents": {
+    "title": "Tableau des incidents",
+    "create": "Créer un incident",
+    "filters": {
+      "all": "Tous",
+      "active": "Actifs",
+      "resolved": "Résolus",
+      "mine": "Assignés à moi"
+    }
+  },
+  "incident": {
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "chat": "Chat",
+      "tasks": "Tâches",
+      "playbooks": "Playbooks",
+      "orders": "Ordres"
+    }
   },
   "workspace": {
     "title": "Espace de travail",
