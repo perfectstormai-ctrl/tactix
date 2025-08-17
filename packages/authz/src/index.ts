@@ -1,43 +1,47 @@
-import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-export interface User {
+export interface TactixUser {
   upn: string;
-  roles: string[];
+  name?: string;
   ad_groups: string[];
+  roles: string[];
 }
 
 export interface AuthenticatedRequest extends Request {
-  user?: User;
+  user?: TactixUser;
 }
 
-function sendJson(res: Response, code: number, body: any) {
-  res.status(code).json(body);
+export type RoleMapper = Array<{ regex: RegExp; roles: string[] }>;
+
+export function verifyJwtRS256(publicKey: string) {
+  const key = publicKey.replace(/\\n/g, '\n');
+  return {
+    decode(token: string) {
+      return jwt.decode(token) as Record<string, any> | null;
+    },
+    verify(token: string) {
+      return jwt.verify(token, key, { algorithms: ['RS256'] }) as Record<string, any>;
+    },
+  };
 }
 
-interface RoleRule {
-  regex: RegExp;
-  roles: string[];
-}
-
-function loadRoleMapping(): RoleRule[] {
+export function roleMapperFromEnv(envVar = 'ROLE_MAPPING_JSON'): RoleMapper {
   try {
-    const raw = JSON.parse(process.env.ROLE_MAPPING_JSON || '{}');
+    const raw = JSON.parse(process.env[envVar] || '{}') as Record<string, string[]>;
     return Object.entries(raw).map(([pattern, roles]) => ({
       regex: new RegExp(pattern),
-      roles: Array.isArray(roles) ? (roles as string[]) : [],
+      roles: Array.isArray(roles) ? roles : [],
     }));
   } catch {
     return [];
   }
 }
 
-const ROLE_RULES = loadRoleMapping();
-
-function mapRoles(groups: string[]): string[] {
+export function resolveRoles(ad_groups: string[], mapper: RoleMapper): string[] {
   const acc = new Set<string>();
-  for (const g of groups) {
-    for (const rule of ROLE_RULES) {
+  for (const g of ad_groups) {
+    for (const rule of mapper) {
       if (rule.regex.test(g)) {
         for (const r of rule.roles) acc.add(r);
       }
@@ -46,60 +50,50 @@ function mapRoles(groups: string[]): string[] {
   return Array.from(acc);
 }
 
-export function verifyJwtRS256(publicKey: string) {
-  const key = publicKey.replace(/\\n/g, '\n');
-  return function requireAuth(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-  ) {
+interface RequireAuthOpts {
+  publicKey?: string;
+  roleMapper?: RoleMapper;
+}
+
+export function requireAuth(opts: RequireAuthOpts = {}) {
+  const pub = (opts.publicKey || process.env.PUBLIC_JWT_KEY || '').replace(/\\n/g, '\n');
+  const { verify } = verifyJwtRS256(pub);
+  const mapper = opts.roleMapper || roleMapperFromEnv();
+  return function (req: AuthenticatedRequest, res: Response, next: NextFunction) {
     const header = req.headers['authorization'];
     if (!header || !header.startsWith('Bearer ')) {
-      return sendJson(res, 401, { error: 'unauthorized' });
+      return res.status(401).json({ error: 'unauthorized' });
     }
     const token = header.slice(7);
     try {
-      const payload: any = jwt.verify(token, key, { algorithms: ['RS256'] });
+      const payload: any = verify(token);
       const ad_groups = Array.isArray(payload.ad_groups) ? payload.ad_groups : [];
       req.user = {
-        upn: payload.sub,
+        upn: payload.upn || payload.sub,
+        name: payload.name,
         ad_groups,
-        roles: mapRoles(ad_groups),
+        roles: resolveRoles(ad_groups, mapper),
       };
       next();
     } catch {
-      return sendJson(res, 401, { error: 'unauthorized' });
+      return res.status(401).json({ error: 'unauthorized' });
     }
   };
-}
-
-const DEFAULT_PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
-export const requireAuth = verifyJwtRS256(DEFAULT_PUBLIC_KEY);
-
-export function hasAnyRole(user: User | undefined, roles: string[]) {
-  if (!user) return false;
-  return roles.some((r) => user.roles.includes(r));
 }
 
 export function requireRole(roles: string[]) {
   return function (req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    requireAuth(req, res, () => {
-      if (!hasAnyRole(req.user, roles)) {
-        return sendJson(res, 403, { error: 'forbidden' });
-      }
-      next();
-    });
+    if (!req.user || !roles.some((r) => req.user!.roles.includes(r))) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    next();
   };
 }
 
-export function decodeJwt(token: string, publicKey: string = DEFAULT_PUBLIC_KEY): User {
-  const payload: any = jwt.verify(token, publicKey.replace(/\\n/g, '\n'), {
-    algorithms: ['RS256'],
-  });
-  const ad_groups = Array.isArray(payload.ad_groups) ? payload.ad_groups : [];
-  return {
-    upn: payload.sub,
-    ad_groups,
-    roles: mapRoles(ad_groups),
-  };
-}
+export default {
+  verifyJwtRS256,
+  requireAuth,
+  roleMapperFromEnv,
+  resolveRoles,
+  requireRole,
+};

@@ -2,13 +2,19 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const { decodeJwt } = require('@tactix/authz');
+const {
+  verifyJwtRS256,
+  roleMapperFromEnv,
+  resolveRoles,
+} = require('@tactix/authz');
 const { createClient } = require('@tactix/lib-db');
 
 const PORT = process.env.PORT || 3000;
 const INCIDENT_SVC_URL = process.env.INCIDENT_SVC_URL || 'http://incident-svc:3000';
 const MAX_QUEUE = 100;
 const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
+const { verify } = verifyJwtRS256(PUBLIC_KEY);
+const ROLE_MAPPER = roleMapperFromEnv();
 
 const app = express();
 app.get('/health', (_req, res) => res.json({ ok: true }));
@@ -40,7 +46,16 @@ server.on('upgrade', (req, socket, head) => {
       return;
     }
     try {
-      req.user = decodeJwt(token, PUBLIC_KEY);
+      const payload = verify(token);
+      const ad_groups = Array.isArray(payload.ad_groups)
+        ? payload.ad_groups
+        : [];
+      req.user = {
+        upn: payload.upn || payload.sub,
+        name: payload.name,
+        ad_groups,
+        roles: resolveRoles(ad_groups, ROLE_MAPPER),
+      };
     } catch {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
