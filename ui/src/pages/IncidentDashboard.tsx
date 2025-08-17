@@ -28,7 +28,7 @@ export default function IncidentDashboard({ token }) {
       body: JSON.stringify({ title: 'New Incident' }),
     })
       .then((res) => res.json())
-      .then((inc) => navigate(`/incidents/${inc.incident_id}`));
+      .then((inc) => navigate(`/incidents/${inc.incident_id}/workspace`));
   };
 
   return (
@@ -59,7 +59,7 @@ export default function IncidentDashboard({ token }) {
         {incidents.map((inc) => (
           <Link
             key={inc.incident_id}
-            to={`/incidents/${inc.incident_id}`}
+            to={`/incidents/${inc.incident_id}/workspace`}
             className="border rounded p-2 space-y-1 hover:bg-gray-50"
           >
             <div className="font-semibold">{inc.title}</div>
