@@ -1,0 +1,8 @@
+{
+  "id": "WARNORD_v1",
+  "sections": [
+    { "section_id": "situation", "title": "Situation" },
+    { "section_id": "mission", "title": "Mission" },
+    { "section_id": "execution", "title": "Execution" }
+  ]
+}

@@ -23,6 +23,8 @@ services:
         condition: service_healthy
       playbook-svc:
         condition: service_healthy
+      orders-svc:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 10s
@@ -104,6 +106,22 @@ services:
       - "3003:3003"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  orders-svc:
+    build:
+      context: .
+      dockerfile: services/orders-svc/Dockerfile
+    env_file:
+      - ./ops/env/orders.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3006:3006"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3006/health"]
       interval: 10s
       timeout: 3s
       retries: 10
