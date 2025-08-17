@@ -5,6 +5,7 @@ import {
   roleMapperFromEnv,
   resolveRoles,
   requireRole,
+  wsAuth,
   type AuthenticatedRequest,
 } from './index';
 import type { Response } from 'express';
@@ -104,5 +105,43 @@ describe('requireRole', () => {
     requireRole(['DO'])(req, res, () => { called = true; });
     expect(status).toBe(403);
     expect(called).toBe(false);
+  });
+});
+
+class FakeServer {
+  handler?: (ws: any, req: any) => void;
+  on(event: string, cb: any) {
+    if (event === 'connection') this.handler = cb;
+  }
+  simulateConnection(headers: Record<string, any> = {}, url = '') {
+    const ws: any = {
+      closed: false,
+      close(code: number) {
+        ws.closed = true;
+        ws.closedCode = code;
+      },
+    };
+    const req = { headers, url };
+    this.handler?.(ws, req);
+    return ws;
+  }
+}
+
+describe('wsAuth', () => {
+  it('attaches user for valid token', () => {
+    const server = new FakeServer();
+    wsAuth(server as any, { publicKey: PUBLIC_KEY });
+    const token = jwt.sign({ sub: 'alice' }, PRIVATE_KEY, { algorithm: 'RS256', expiresIn: '1h' });
+    const ws = server.simulateConnection({ 'sec-websocket-protocol': `bearer, ${token}` });
+    expect(ws.user.upn).toBe('alice');
+    expect(ws.closed).toBe(false);
+  });
+
+  it('closes connection when token missing', () => {
+    const server = new FakeServer();
+    wsAuth(server as any, { publicKey: PUBLIC_KEY });
+    const ws = server.simulateConnection();
+    expect(ws.closed).toBe(true);
+    expect(ws.closedCode).toBe(1008);
   });
 });
