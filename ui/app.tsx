@@ -11,6 +11,7 @@ import EngRooms from './src/pages/EngRooms.tsx';
 import EngRoom from './src/pages/EngRoom.tsx';
 import SettingsProfile from './src/pages/SettingsProfile.tsx';
 import SettingsAdmin from './src/pages/SettingsAdmin.tsx';
+import InvitePage from './src/pages/InvitePage.tsx';
 import NotFound from './src/pages/NotFound.tsx';
 import ErrorPage from './src/pages/ErrorPage.tsx';
 import { notifyStore } from './src/lib/notify.ts';
@@ -126,6 +127,7 @@ function App() {
                 <Route path="eng/rooms/:roomId" element={<EngRoom />} />
               </>
             )}
+            <Route path="invite" element={<InvitePage />} />
             <Route path="settings/profile" element={<SettingsProfile />} />
             <Route path="settings/admin" element={<SettingsAdmin />} />
             <Route path="error" element={<ErrorPage />} />

@@ -20,7 +20,9 @@
     "logout": "Déconnexion"
   },
   "header": {
-    "search": { "placeholder": "Recherche" },
+    "search": {
+      "placeholder": "Recherche"
+    },
     "notifications": "Notifications",
     "language": "Langue",
     "logout": "Déconnexion"
@@ -48,7 +50,9 @@
     "title": "Playbooks"
   },
   "orders": {
-    "list": { "title": "Ordres" }
+    "list": {
+      "title": "Ordres"
+    }
   },
   "settings": {
     "profile": "Profil",
@@ -135,5 +139,15 @@
       "done": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "invite": {
+    "generate": "Générer un code d'invitation",
+    "serverId": "ID du serveur",
+    "secret": "Secret",
+    "code": "Code d'invitation",
+    "join": "Rejoindre par code d'invitation",
+    "paste": "Code d'invitation",
+    "submit": "Rejoindre",
+    "invalid": "Code invalide ou expiré"
   }
 }
