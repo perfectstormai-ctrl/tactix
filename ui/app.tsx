@@ -13,6 +13,7 @@ import SettingsProfile from './src/pages/SettingsProfile.tsx';
 import SettingsAdmin from './src/pages/SettingsAdmin.tsx';
 import NotFound from './src/pages/NotFound.tsx';
 import ErrorPage from './src/pages/ErrorPage.tsx';
+import SetupLdap from './src/pages/SetupLdap.tsx';
 import { notifyStore } from './src/lib/notify.ts';
 import i18n from './src/i18n/index.ts';
 import Button from './src/design/Button.tsx';
@@ -96,6 +97,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/setup/ldap" element={<SetupLdap />} />
           <Route
             path="/*"
             element={

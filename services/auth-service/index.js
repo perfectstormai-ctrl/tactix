@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const ldap = require('ldapjs');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
@@ -12,23 +14,33 @@ const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
 const JWT_ISS = process.env.JWT_ISS || 'tactix-auth';
 const ACCESS_TTL_MIN = Number(process.env.ACCESS_TTL_MIN || '15');
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TTL_DAYS || '7');
-const LDAP_URL = process.env.LDAP_URL;
-const LDAP_BIND_DN = process.env.LDAP_BIND_DN;
-const LDAP_BIND_PW = process.env.LDAP_BIND_PW;
-const LDAP_USER_BASE = process.env.LDAP_USER_BASE;
-const LDAP_USER_FILTER = process.env.LDAP_USER_FILTER || '(uid={upn})';
+
+const CONFIG_PATH = path.resolve(__dirname, '../../tactix.config.json');
+let config = {};
+try {
+  config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+} catch {
+  config = {};
+}
+let ldapConfig = config.ldap;
+let localUsers = Array.isArray(config.users) ? config.users : [];
+const LDAP_USER_FILTER = '(uid={upn})';
 
 function ldapAuthenticate(upn, password) {
+  if (!ldapConfig) {
+    return Promise.reject(new Error('ldap not configured'));
+  }
+  const { host, port, baseDn, bindDn, bindPw } = ldapConfig;
   return new Promise((resolve, reject) => {
-    const client = ldap.createClient({ url: LDAP_URL });
-    client.bind(LDAP_BIND_DN, LDAP_BIND_PW, (err) => {
+    const client = ldap.createClient({ url: `ldap://${host}:${port}` });
+    client.bind(bindDn, bindPw, (err) => {
       if (err) {
         client.unbind();
         return reject(err);
       }
       const filter = LDAP_USER_FILTER.replace(/\{upn\}/g, upn);
       const opts = { filter, scope: 'sub', attributes: ['dn', 'memberOf', 'cn'] };
-      client.search(LDAP_USER_BASE, opts, (err, res) => {
+      client.search(baseDn, opts, (err, res) => {
         if (err) {
           client.unbind();
           return reject(err);
@@ -70,15 +82,31 @@ function ldapAuthenticate(upn, password) {
   });
 }
 
+function localAuthenticate(upn, password) {
+  const user = localUsers.find((u) => u.upn === upn && u.password === password);
+  if (!user) return null;
+  return { ad_groups: [], name: upn };
+}
+
+function searchFirst(client, base, filter) {
+  return new Promise((resolve, reject) => {
+    client.search(base, { scope: 'sub', filter, attributes: ['dn', 'cn'] }, (err, res) => {
+      if (err) return reject(err);
+      let dn = null;
+      res.on('searchEntry', (entry) => {
+        dn = entry.objectName || entry.dn;
+      });
+      res.on('error', (e) => reject(e));
+      res.on('end', () => resolve(dn));
+    });
+  });
+}
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, ts: new Date().toISOString() });
 });
 
 app.get('/openapi.json', (_req, res) => {
-  // Serve static OpenAPI definition for this service
-  // Keeping it simple and synchronous as the document is small
-  // and does not require dynamic generation.
-  // eslint-disable-next-line global-require
   const spec = require('./openapi.json');
   res.json(spec);
 });
@@ -89,7 +117,14 @@ app.post('/login', async (req, res) => {
     return res.status(400).json({ error: 'upn and password required' });
   }
   try {
-    const { ad_groups, name } = await ldapAuthenticate(upn, password);
+    let result;
+    if (ldapConfig) {
+      result = await ldapAuthenticate(upn, password);
+    } else {
+      result = localAuthenticate(upn, password);
+      if (!result) throw new Error('invalid credentials');
+    }
+    const { ad_groups, name } = result;
     const baseClaims = { sub: upn, name, ad_groups, iss: JWT_ISS };
     const access = jwt.sign({ ...baseClaims, aud: 'tactix' }, PRIVATE_KEY, {
       algorithm: 'RS256',
@@ -103,6 +138,54 @@ app.post('/login', async (req, res) => {
   } catch (err) {
     res.status(401).json({ error: 'invalid credentials' });
   }
+});
+
+app.post('/ldap/test', async (req, res) => {
+  const { host, port, starttls, baseDn, bindDn, bindPw } = req.body || {};
+  try {
+    const client = ldap.createClient({ url: `ldap://${host}:${port}` });
+    let responded = false;
+    client.on('error', (err) => {
+      if (!responded) {
+        responded = true;
+        res.json({ ok: false, error: err.message });
+      }
+    });
+    client.bind(bindDn, bindPw, async (err) => {
+      if (responded) return;
+      if (err) {
+        client.unbind();
+        responded = true;
+        return res.json({ ok: false, error: err.message });
+      }
+      try {
+        const sampleUser = await searchFirst(client, baseDn, '(objectClass=person)');
+        const sampleGroup = await searchFirst(
+          client,
+          baseDn,
+          '(objectClass=groupOfNames)'
+        );
+        client.unbind();
+        responded = true;
+        res.json({ ok: true, sampleUser, sampleGroup });
+      } catch (e) {
+        client.unbind();
+        responded = true;
+        res.json({ ok: false, error: e.message });
+      }
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/ldap/save', (req, res) => {
+  const { host, port, starttls, baseDn, bindDn, bindPw } = req.body || {};
+  const newConfig = { host, port, starttls, baseDn, bindDn, bindPw };
+  config.ldap = newConfig;
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  ldapConfig = newConfig;
+  res.json({ ok: true });
 });
 
 app.post('/refresh', (req, res) => {

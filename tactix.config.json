@@ -1,0 +1,5 @@
+{
+  "users": [
+    { "upn": "admin", "password": "admin" }
+  ]
+}

@@ -135,5 +135,20 @@
       "done": "Done",
       "cancelled": "Cancelled"
     }
+  },
+  "setup": {
+    "ldap": {
+      "title": "LDAP Configuration",
+      "host": "Host",
+      "port": "Port",
+      "starttls": "StartTLS",
+      "baseDn": "Base DN",
+      "bindDn": "Bind DN",
+      "bindPw": "Bind Password",
+      "test": "Test",
+      "save": "Save",
+      "success": "Connection successful",
+      "saved": "Configuration saved"
+    }
   }
 }
