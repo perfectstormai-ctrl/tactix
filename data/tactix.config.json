@@ -1,0 +1,7 @@
+{
+  "mode": "single",
+  "ldap": {},
+  "discovery": { "lan": true, "cloud": false },
+  "server": { "announce": true },
+  "pinnedServers": []
+}
