@@ -1,12 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher.tsx';
 
-export default function TopNav({ onLogout }) {
+export default function TopNav({ onLogout, mode }) {
   const { t } = useTranslation();
   return (
     <header className="flex items-center justify-between bg-gray-800 text-white px-4 py-2">
       <div className="flex items-center gap-2">
         <div className="font-bold">TACTIX</div>
+        {mode && (
+          <span className="text-xs bg-blue-600 px-2 py-0.5 rounded">
+            {t(`mode.${mode}`)}
+          </span>
+        )}
         <select className="text-black text-sm rounded px-1 py-0.5" aria-label={t('nav.operations')}>
           <option>OP1</option>
         </select>

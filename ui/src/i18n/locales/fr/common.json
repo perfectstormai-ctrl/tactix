@@ -135,5 +135,50 @@
       "done": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "mode": {
+    "single": "Solo",
+    "server": "Serveur",
+    "client": "Client"
+  },
+  "firstRun": {
+    "welcome": {
+      "title": "Bienvenue dans TACTIX",
+      "next": "Commencer"
+    },
+    "systemCheck": {
+      "title": "Vérification du système",
+      "run": "Lancer la vérification",
+      "success": "Le système est prêt",
+      "next": "Suivant"
+    },
+    "chooseRole": {
+      "title": "Choisir le rôle",
+      "local": "Client local",
+      "server": "Devenir un serveur",
+      "client": "Rejoindre un serveur",
+      "next": "Suivant"
+    },
+    "ldap": {
+      "title": "Configuration LDAP",
+      "url": "URL",
+      "bindDn": "Bind DN",
+      "bindPassword": "Mot de passe de liaison",
+      "baseDn": "Base DN",
+      "test": "Tester la connexion",
+      "skip": "Ignorer",
+      "next": "Suivant"
+    },
+    "localAdmin": {
+      "title": "Créer un admin local",
+      "upn": "UPN de l'admin",
+      "password": "Mot de passe",
+      "create": "Créer l'admin"
+    },
+    "review": {
+      "title": "Revoir et appliquer",
+      "apply": "Appliquer",
+      "restart": "Configuration appliquée. Redémarrage..."
+    }
   }
 }
