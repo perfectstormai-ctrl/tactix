@@ -16,6 +16,7 @@ import ErrorPage from './src/pages/ErrorPage.tsx';
 import { notifyStore } from './src/lib/notify.ts';
 import i18n from './src/i18n/index.ts';
 import Button from './src/design/Button.tsx';
+import FirstRun from './src/pages/FirstRun.tsx';
 
 const { useEffect, useState } = React;
 const { I18nextProvider, useTranslation } = ReactI18next;
@@ -26,6 +27,7 @@ function App() {
   const [refreshToken, setRefreshToken] = useState(
     localStorage.getItem('refreshToken') || ''
   );
+  const [mode, setMode] = useState(undefined);
   const ENG_CHAT_ENABLED = (window as any).ENV?.ENG_CHAT_ENABLED !== false;
 
   function handleLogin(data) {
@@ -41,6 +43,13 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
   }
+
+  useEffect(() => {
+    fetch('/bootstrap/config')
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setMode(data.mode))
+      .catch(() => setMode(null));
+  }, []);
 
   // Periodically refresh JWT using refresh token
   useEffect(() => {
@@ -91,47 +100,57 @@ function App() {
     return children;
   };
 
+  if (mode === undefined) return null;
+
   return (
     <I18nextProvider i18n={i18n}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          <Route
-            path="/*"
-            element={
-              <Protected>
-                <MainLayout onLogout={logout} />
-              </Protected>
-            }
-          >
-            <Route index element={<Navigate to="/operations" replace />} />
-            <Route path="operations" element={<OperationsList />} />
-            <Route path="operations/:opId/overview" element={<OperationOverview />} />
-            <Route path="incidents" element={<IncidentDashboard token={token} />} />
+        {mode ? (
+          <Routes>
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route
-              path="incidents/:incidentId/workspace"
-              element={<IncidentPage token={token} />}
-            />
-            <Route
-              path="operations/:opId/schedule"
-              element={<SchedulePage />}
-            />
-            <Route path="incidents/:incidentId/playbook" element={<PlaybookPage />} />
-            <Route path="playbooks/:playbookId" element={<PlaybookPage />} />
-            <Route path="orders" element={<OrdersList />} />
-            <Route path="orders/:orderId" element={<OrderDetail />} />
-            {ENG_CHAT_ENABLED && (
-              <>
-                <Route path="eng" element={<EngRooms />} />
-                <Route path="eng/rooms/:roomId" element={<EngRoom />} />
-              </>
-            )}
-            <Route path="settings/profile" element={<SettingsProfile />} />
-            <Route path="settings/admin" element={<SettingsAdmin />} />
-            <Route path="error" element={<ErrorPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
+              path="/*"
+              element={
+                <Protected>
+                  <MainLayout onLogout={logout} mode={mode} />
+                </Protected>
+              }
+            >
+              <Route index element={<Navigate to="/operations" replace />} />
+              <Route path="operations" element={<OperationsList />} />
+              <Route path="operations/:opId/overview" element={<OperationOverview />} />
+              <Route path="incidents" element={<IncidentDashboard token={token} />} />
+              <Route
+                path="incidents/:incidentId/workspace"
+                element={<IncidentPage token={token} />}
+              />
+              <Route
+                path="operations/:opId/schedule"
+                element={<SchedulePage />}
+              />
+              <Route path="incidents/:incidentId/playbook" element={<PlaybookPage />} />
+              <Route path="playbooks/:playbookId" element={<PlaybookPage />} />
+              <Route path="orders" element={<OrdersList />} />
+              <Route path="orders/:orderId" element={<OrderDetail />} />
+              {ENG_CHAT_ENABLED && (
+                <>
+                  <Route path="eng" element={<EngRooms />} />
+                  <Route path="eng/rooms/:roomId" element={<EngRoom />} />
+                </>
+              )}
+              <Route path="settings/profile" element={<SettingsProfile />} />
+              <Route path="settings/admin" element={<SettingsAdmin />} />
+              <Route path="error" element={<ErrorPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+            <Route path="/first-run" element={<Navigate to="/login" replace />} />
+          </Routes>
+        ) : (
+          <Routes>
+            <Route path="/first-run" element={<FirstRun onComplete={setMode} />} />
+            <Route path="*" element={<Navigate to="/first-run" replace />} />
+          </Routes>
+        )}
       </BrowserRouter>
     </I18nextProvider>
   );
