@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
 
 export interface TactixUser {
@@ -90,10 +91,63 @@ export function requireRole(roles: string[]) {
   };
 }
 
+export interface AuthedWebSocket {
+  close(code: number, reason?: string): void;
+  user?: TactixUser;
+}
+
+export interface WebSocketServerLike {
+  on(event: 'connection', cb: (ws: AuthedWebSocket, req: IncomingMessage) => void): void;
+}
+
+interface WsAuthOpts extends RequireAuthOpts {}
+
+function extractToken(req: IncomingMessage): string | null {
+  const proto = req.headers['sec-websocket-protocol'];
+  if (typeof proto === 'string') {
+    const parts = proto.split(',').map((p) => p.trim());
+    if (parts[0] === 'bearer' && parts[1]) return parts[1];
+  }
+  try {
+    const url = new URL(req.url || '', 'http://localhost');
+    const t = url.searchParams.get('token');
+    if (t) return t;
+  } catch {
+    /* noop */
+  }
+  return null;
+}
+
+export function wsAuth(server: WebSocketServerLike, opts: WsAuthOpts = {}) {
+  const pub = (opts.publicKey || process.env.PUBLIC_JWT_KEY || '').replace(/\\n/g, '\n');
+  const { verify } = verifyJwtRS256(pub);
+  const mapper = opts.roleMapper || roleMapperFromEnv();
+  server.on('connection', (ws: AuthedWebSocket, req: IncomingMessage) => {
+    const token = extractToken(req);
+    if (!token) {
+      ws.close(1008, 'unauthorized');
+      return;
+    }
+    try {
+      const payload: any = verify(token);
+      const ad_groups = Array.isArray(payload.ad_groups) ? payload.ad_groups : [];
+      ws.user = {
+        upn: payload.upn || payload.sub,
+        name: payload.name,
+        ad_groups,
+        roles: resolveRoles(ad_groups, mapper),
+      };
+    } catch {
+      ws.close(1008, 'unauthorized');
+    }
+  });
+}
+
 export default {
   verifyJwtRS256,
   requireAuth,
   roleMapperFromEnv,
   resolveRoles,
   requireRole,
+  wsAuth,
 };
