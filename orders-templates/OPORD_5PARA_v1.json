@@ -1,0 +1,10 @@
+{
+  "id": "OPORD_5PARA_v1",
+  "sections": [
+    { "section_id": "1_situation", "title": "1. Situation" },
+    { "section_id": "2_mission", "title": "2. Mission" },
+    { "section_id": "3_execution", "title": "3. Execution" },
+    { "section_id": "4_sustainment", "title": "4. Sustainment" },
+    { "section_id": "5_command_signal", "title": "5. Command and Signal" }
+  ]
+}
