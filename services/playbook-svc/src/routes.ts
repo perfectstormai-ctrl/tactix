@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { pool } from './index.js';
 import { ORG_CODE } from './env.js';
-import { requireAuth, AuthenticatedRequest } from './auth.js';
-import { canEditPlaybooks, canRunPlaybooks } from './rbac.js';
+import { requireAuth, AuthenticatedRequest, hasRole } from './auth.js';
+import { canEditPlaybooks } from './rbac.js';
 
 const router = Router();
 
@@ -58,7 +58,7 @@ const RunBody = z.object({
 });
 
 router.post('/playbooks/:id/run', requireAuth, async (req: AuthenticatedRequest, res) => {
-  if (!canRunPlaybooks(req.user?.roles || [])) {
+  if (!hasRole(req.user, 'DO')) {
     return res.status(403).json({ error: 'forbidden' });
   }
   const id = req.params.id;

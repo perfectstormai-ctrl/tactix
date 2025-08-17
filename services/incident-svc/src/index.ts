@@ -3,7 +3,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Client, createClient } from '@tactix/lib-db';
-import { requireAuth, requireRole, AuthenticatedRequest } from '@tactix/auth';
+import { requireAuth, requireRole, AuthenticatedRequest } from '@tactix/authz';
 import { effective } from './rbac/effective';
 import { draftMessageHandler, submitMessageHandler } from './routes/incidents/messages.js';
 import { getChatHandler, postChatHandler } from './routes/incidents/chat.js';

@@ -9,35 +9,37 @@ app.use(express.json());
 const PORT = process.env.PORT || 3001;
 const PRIVATE_KEY = (process.env.JWT_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 const PUBLIC_KEY = (process.env.JWT_PUBLIC_KEY || '').replace(/\\n/g, '\n');
+const JWT_ISS = process.env.JWT_ISS || 'tactix-auth';
+const ACCESS_TTL_MIN = Number(process.env.ACCESS_TTL_MIN || '15');
+const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TTL_DAYS || '7');
 const LDAP_URL = process.env.LDAP_URL;
 const LDAP_BIND_DN = process.env.LDAP_BIND_DN;
-const LDAP_BIND_PASSWORD = process.env.LDAP_BIND_PASSWORD;
-const LDAP_BASE_DN = process.env.LDAP_BASE_DN;
-const ROLE_MAP = process.env.LDAP_ROLE_MAP ? JSON.parse(process.env.LDAP_ROLE_MAP) : {};
+const LDAP_BIND_PW = process.env.LDAP_BIND_PW;
+const LDAP_USER_BASE = process.env.LDAP_USER_BASE;
+const LDAP_USER_FILTER = process.env.LDAP_USER_FILTER || '(uid={upn})';
 
 function ldapAuthenticate(upn, password) {
   return new Promise((resolve, reject) => {
     const client = ldap.createClient({ url: LDAP_URL });
-    client.bind(LDAP_BIND_DN, LDAP_BIND_PASSWORD, (err) => {
+    client.bind(LDAP_BIND_DN, LDAP_BIND_PW, (err) => {
       if (err) {
         client.unbind();
         return reject(err);
       }
-      const opts = {
-        filter: `(userPrincipalName=${upn})`,
-        scope: 'sub',
-        attributes: ['dn', 'memberOf']
-      };
-      client.search(LDAP_BASE_DN, opts, (err, res) => {
+      const filter = LDAP_USER_FILTER.replace(/\{upn\}/g, upn);
+      const opts = { filter, scope: 'sub', attributes: ['dn', 'memberOf', 'cn'] };
+      client.search(LDAP_USER_BASE, opts, (err, res) => {
         if (err) {
           client.unbind();
           return reject(err);
         }
         let userDn = null;
         let groups = [];
+        let name = upn;
         res.on('searchEntry', (entry) => {
           userDn = entry.objectName || entry.dn;
-          const member = entry.attributes.find(a => a.type === 'memberOf');
+          name = entry.attributes.find((a) => a.type === 'cn')?.vals?.[0] || upn;
+          const member = entry.attributes.find((a) => a.type === 'memberOf');
           if (member) {
             groups = Array.isArray(member.vals) ? member.vals : [member.vals];
           } else if (entry.object && entry.object.memberOf) {
@@ -59,12 +61,8 @@ function ldapAuthenticate(upn, password) {
               client.unbind();
               return reject(new Error('invalid credentials'));
             }
-            const roles = [];
-            for (const g of groups) {
-              if (ROLE_MAP[g]) roles.push(ROLE_MAP[g]);
-            }
             client.unbind();
-            resolve(roles);
+            resolve({ ad_groups: groups, name });
           });
         });
       });
@@ -76,45 +74,46 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/auth/login', async (req, res) => {
+app.post('/login', async (req, res) => {
   const { upn, password } = req.body || {};
   if (!upn || !password) {
     return res.status(400).json({ error: 'upn and password required' });
   }
   try {
-    const roles = await ldapAuthenticate(upn, password);
-    const accessToken = jwt.sign({ sub: upn, roles }, PRIVATE_KEY, {
+    const { ad_groups, name } = await ldapAuthenticate(upn, password);
+    const baseClaims = { sub: upn, name, ad_groups, iss: JWT_ISS };
+    const access = jwt.sign({ ...baseClaims, aud: 'tactix' }, PRIVATE_KEY, {
       algorithm: 'RS256',
-      expiresIn: '15m'
+      expiresIn: `${ACCESS_TTL_MIN}m`,
     });
-    const refreshToken = jwt.sign({ sub: upn, roles, type: 'refresh' }, PRIVATE_KEY, {
+    const refresh = jwt.sign({ ...baseClaims, aud: 'refresh' }, PRIVATE_KEY, {
       algorithm: 'RS256',
-      expiresIn: '7d'
+      expiresIn: `${REFRESH_TTL_DAYS}d`,
     });
-    res.json({ accessToken, refreshToken, roles });
+    res.json({ access, refresh, user: { upn, name, ad_groups } });
   } catch (err) {
     res.status(401).json({ error: 'invalid credentials' });
   }
 });
 
-app.post('/auth/refresh', (req, res) => {
-  const { refreshToken } = req.body || {};
-  if (!refreshToken) {
-    return res.status(400).json({ error: 'refreshToken required' });
+app.post('/refresh', (req, res) => {
+  const { refresh } = req.body || {};
+  if (!refresh) {
+    return res.status(400).json({ error: 'refresh required' });
   }
   try {
-    const payload = jwt.verify(refreshToken, PUBLIC_KEY, { algorithms: ['RS256'] });
-    if (payload.type !== 'refresh') throw new Error('invalid token');
-    const { sub, roles } = payload;
-    const accessToken = jwt.sign({ sub, roles }, PRIVATE_KEY, {
-      algorithm: 'RS256',
-      expiresIn: '15m'
+    const payload = jwt.verify(refresh, PUBLIC_KEY, {
+      algorithms: ['RS256'],
+      audience: 'refresh',
+      issuer: JWT_ISS,
     });
-    const newRefreshToken = jwt.sign({ sub, roles, type: 'refresh' }, PRIVATE_KEY, {
-      algorithm: 'RS256',
-      expiresIn: '7d'
-    });
-    res.json({ accessToken, refreshToken: newRefreshToken, roles });
+    const { sub, name, ad_groups } = payload;
+    const access = jwt.sign(
+      { sub, name, ad_groups, iss: JWT_ISS, aud: 'tactix' },
+      PRIVATE_KEY,
+      { algorithm: 'RS256', expiresIn: `${ACCESS_TTL_MIN}m` }
+    );
+    res.json({ access });
   } catch (err) {
     res.status(401).json({ error: 'invalid refresh token' });
   }
