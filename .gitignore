@@ -2,3 +2,4 @@ node_modules
 npm-debug.log
 dist
 !services/incident-svc/dist/
+tactix.config.json

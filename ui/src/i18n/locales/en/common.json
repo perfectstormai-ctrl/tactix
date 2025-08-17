@@ -52,7 +52,9 @@
   },
   "settings": {
     "profile": "Profile",
-    "admin": "Admin"
+    "admin": "Admin",
+    "join": "Join a Server",
+    "promote": "Promote to Server"
   },
   "common": {
     "save": "Save",
@@ -135,5 +137,17 @@
       "done": "Done",
       "cancelled": "Cancelled"
     }
+  },
+  "connect": {
+    "joinTitle": "Join a Server",
+    "discover": "Discover",
+    "manual": "Manual URL",
+    "scan": "Scan QR",
+    "fingerprint": "Fingerprint",
+    "trust": "Trust",
+    "saved": "Server pinned",
+    "promoteTitle": "Promote to Server",
+    "promoteAction": "Promote",
+    "invite": "Invite QR"
   }
 }

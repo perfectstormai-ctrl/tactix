@@ -11,6 +11,8 @@ import EngRooms from './src/pages/EngRooms.tsx';
 import EngRoom from './src/pages/EngRoom.tsx';
 import SettingsProfile from './src/pages/SettingsProfile.tsx';
 import SettingsAdmin from './src/pages/SettingsAdmin.tsx';
+import JoinServer from './src/pages/JoinServer.tsx';
+import PromoteServer from './src/pages/PromoteServer.tsx';
 import NotFound from './src/pages/NotFound.tsx';
 import ErrorPage from './src/pages/ErrorPage.tsx';
 import { notifyStore } from './src/lib/notify.ts';
@@ -95,6 +97,7 @@ function App() {
     <I18nextProvider i18n={i18n}>
       <BrowserRouter>
         <Routes>
+          <Route path="/join" element={<JoinServer />} />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route
             path="/*"
@@ -128,6 +131,8 @@ function App() {
             )}
             <Route path="settings/profile" element={<SettingsProfile />} />
             <Route path="settings/admin" element={<SettingsAdmin />} />
+            <Route path="settings/join" element={<JoinServer />} />
+            <Route path="settings/promote" element={<PromoteServer />} />
             <Route path="error" element={<ErrorPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
@@ -181,6 +186,11 @@ function Login({ onLogin }) {
       <Button type="submit" className="w-full">
         {t('auth.login.submit')}
       </Button>
+      <p className="text-center">
+        <a className="text-blue-600" href="/join">
+          {t('connect.joinTitle')}
+        </a>
+      </p>
     </form>
   );
 }

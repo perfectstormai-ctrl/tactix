@@ -52,7 +52,9 @@
   },
   "settings": {
     "profile": "Profil",
-    "admin": "Admin"
+    "admin": "Admin",
+    "join": "Rejoindre un serveur",
+    "promote": "Promouvoir en serveur"
   },
   "common": {
     "save": "Enregistrer",
@@ -135,5 +137,17 @@
       "done": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "connect": {
+    "joinTitle": "Rejoindre un serveur",
+    "discover": "Découvrir",
+    "manual": "URL manuelle",
+    "scan": "Scanner QR",
+    "fingerprint": "Empreinte",
+    "trust": "Faire confiance",
+    "saved": "Serveur enregistré",
+    "promoteTitle": "Promouvoir en serveur",
+    "promoteAction": "Promouvoir",
+    "invite": "QR d'invitation"
   }
 }
