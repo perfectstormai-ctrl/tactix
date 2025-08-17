@@ -40,5 +40,31 @@
     "cancel": "Annuler",
     "submit": "Déclencher",
     "triggered": "Playbook déclenché"
+  },
+  "workspace": {
+    "title": "Espace de travail",
+    "chat": {
+      "title": "Chat de l'incident",
+      "placeholder": "Écrire un message",
+      "send": "Envoyer"
+    },
+    "tasks": {
+      "title": "Tâches",
+      "new": "Nouvelle tâche",
+      "assignee": "UPN du responsable",
+      "role": "Rôle",
+      "status": "Statut"
+    },
+    "activity": {
+      "title": "Activité"
+    }
+  },
+  "task": {
+    "status": {
+      "open": "Ouverte",
+      "in_progress": "En cours",
+      "done": "Terminée",
+      "cancelled": "Annulée"
+    }
   }
 }

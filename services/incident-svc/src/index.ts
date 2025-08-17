@@ -6,6 +6,9 @@ import { Client, createClient } from '@tactix/lib-db';
 import { requireAuth, requireRole, AuthenticatedRequest } from '@tactix/auth';
 import { effective } from './rbac/effective';
 import { draftMessageHandler, submitMessageHandler } from './routes/incidents/messages.js';
+import { getChatHandler, postChatHandler } from './routes/incidents/chat.js';
+import { getTasksHandler, postTaskHandler, patchTaskHandler } from './routes/incidents/tasks.js';
+import { getActivityHandler } from './routes/incidents/activity.js';
 
 declare const process: any;
 declare const Buffer: any;
@@ -408,6 +411,53 @@ export function createServer() {
       const incidentId = Number(submitMatch[1]);
       return requireAuth(req as AuthenticatedRequest, res, () =>
         submitMessageHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+      );
+    }
+
+    const chatMatch = url.pathname.match(/^\/incidents\/(\d+)\/chat$/);
+    if (chatMatch && dbClient) {
+      const incidentId = Number(chatMatch[1]);
+      if (req.method === 'GET') {
+        return requireAuth(req as AuthenticatedRequest, res, () =>
+          getChatHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+        );
+      }
+      if (req.method === 'POST') {
+        return requireAuth(req as AuthenticatedRequest, res, () =>
+          postChatHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+        );
+      }
+    }
+
+    const tasksMatch = url.pathname.match(/^\/incidents\/(\d+)\/tasks$/);
+    if (tasksMatch && dbClient) {
+      const incidentId = Number(tasksMatch[1]);
+      if (req.method === 'GET') {
+        return requireAuth(req as AuthenticatedRequest, res, () =>
+          getTasksHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+        );
+      }
+      if (req.method === 'POST') {
+        return requireAuth(req as AuthenticatedRequest, res, () =>
+          postTaskHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
+        );
+      }
+    }
+
+    const taskPatchMatch = url.pathname.match(/^\/incidents\/(\d+)\/tasks\/([^/]+)$/);
+    if (taskPatchMatch && req.method === 'PATCH' && dbClient) {
+      const incidentId = Number(taskPatchMatch[1]);
+      const taskId = taskPatchMatch[2];
+      return requireAuth(req as AuthenticatedRequest, res, () =>
+        patchTaskHandler(req as AuthenticatedRequest, res, incidentId, taskId, dbClient!)
+      );
+    }
+
+    const activityMatch = url.pathname.match(/^\/incidents\/(\d+)\/activity$/);
+    if (activityMatch && req.method === 'GET' && dbClient) {
+      const incidentId = Number(activityMatch[1]);
+      return requireAuth(req as AuthenticatedRequest, res, () =>
+        getActivityHandler(req as AuthenticatedRequest, res, incidentId, dbClient!)
       );
     }
 
