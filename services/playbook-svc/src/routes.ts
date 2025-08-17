@@ -1,67 +1,94 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
+import { randomUUID } from 'crypto';
 import { pool } from './index.js';
 import { ORG_CODE } from './env.js';
-import type { PlaybookDef } from './types.js';
+import { requireAuth, AuthenticatedRequest } from './auth.js';
+import { canEditPlaybooks, canRunPlaybooks } from './rbac.js';
 
 const router = Router();
-const PB_DIR = path.resolve(process.cwd(), 'playbooks');
 
-function loadPlaybooks(): PlaybookDef[] {
-  if (!fs.existsSync(PB_DIR)) return [];
-  return fs
-    .readdirSync(PB_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => JSON.parse(fs.readFileSync(path.join(PB_DIR, f), 'utf-8')));
-}
-
-router.get('/playbooks', (_req, res) => {
-  const list = loadPlaybooks().map((p) => ({
-    id: p.id,
-    name: p.name,
-    summary: p.summary,
-  }));
-  res.json({ playbooks: list });
+const CreateBody = z.object({
+  name: z.string().min(1),
+  json: z.any(),
 });
 
-const TriggerBody = z.object({
+router.get('/incidents/:incidentId/playbooks', requireAuth, async (req, res) => {
+  const incidentId = req.params.incidentId;
+  const { rows } = await pool.query(
+    'SELECT playbook_id, name FROM playbooks WHERE incident_id = $1 ORDER BY name',
+    [incidentId]
+  );
+  res.json({
+    playbooks: rows.map((r: any) => ({ id: r.playbook_id, name: r.name })),
+  });
+});
+
+router.post('/incidents/:incidentId/playbooks', requireAuth, async (req: AuthenticatedRequest, res) => {
+  if (!canEditPlaybooks(req.user?.roles || [])) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const incidentId = req.params.incidentId;
+  const parsed = CreateBody.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  const id = randomUUID();
+  await pool.query(
+    'INSERT INTO playbooks (playbook_id, incident_id, name, json, created_by) VALUES ($1,$2,$3,$4,$5)',
+    [id, incidentId, parsed.data.name, JSON.stringify(parsed.data.json), req.user?.sub || 'system']
+  );
+  res.status(201).json({ playbook: { id, name: parsed.data.name } });
+});
+
+router.get('/playbooks/:id', requireAuth, async (req, res) => {
+  const id = req.params.id;
+  const { rows } = await pool.query(
+    'SELECT playbook_id, incident_id, name, json FROM playbooks WHERE playbook_id = $1',
+    [id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+  res.json({ playbook: rows[0] });
+});
+
+const RunBody = z.object({
   incidentId: z.string().min(8),
-  operationCode: z.string().min(2).optional(),
   message: z.string().min(1).max(2000).optional(),
   severity: z.enum(['info', 'warning', 'critical']).optional(),
 });
 
-router.post('/playbooks/:id/trigger', async (req, res) => {
+router.post('/playbooks/:id/run', requireAuth, async (req: AuthenticatedRequest, res) => {
+  if (!canRunPlaybooks(req.user?.roles || [])) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
   const id = req.params.id;
-  const pb = loadPlaybooks().find((p) => p.id === id);
-  if (!pb) return res.status(404).json({ error: 'playbook_not_found' });
-
-  const parsed = TriggerBody.safeParse(req.body);
+  const { rows } = await pool.query('SELECT name, json FROM playbooks WHERE playbook_id = $1', [id]);
+  if (!rows[0]) return res.status(404).json({ error: 'playbook_not_found' });
+  const parsed = RunBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const actorUpn = (req.header('X-Actor-Upn') || 'system').toString();
+  const actorUpn = req.user?.sub || 'system';
+  const runId = randomUUID();
   const now = new Date().toISOString();
-  const message = parsed.data.message || pb.defaultMessage || `Playbook ${pb.name} triggered`;
-  const severity = parsed.data.severity || pb.defaultSeverity || 'info';
-  const opCode = parsed.data.operationCode || ORG_CODE;
-
+  const message = parsed.data.message || rows[0].json?.defaultMessage || `Playbook ${rows[0].name} triggered`;
+  const severity = parsed.data.severity || rows[0].json?.defaultSeverity || 'info';
   const envelope = {
     type: 'PLAYBOOK_NOTIFY',
-    playbookId: pb.id,
+    playbookId: id,
     incidentId: parsed.data.incidentId,
-    operationCode: opCode,
+    operationCode: ORG_CODE,
     severity,
-    title: pb.name,
+    title: rows[0].name,
     text: message,
     actorUpn,
     occurredAt: now,
   };
-
   await pool.query('NOTIFY tactix_events, $1', [JSON.stringify(envelope)]);
-
-  res.json({ ok: true, notified: true, envelope });
+  await pool.query(
+    'INSERT INTO playbook_runs (run_id, playbook_id, incident_id, requested_by, approved_by, status) VALUES ($1,$2,$3,$4,$5,$6)',
+    [runId, id, parsed.data.incidentId, actorUpn, actorUpn, 'executed']
+  );
+  res.json({ ok: true, runId });
 });
 
 export default router;

@@ -1,10 +1,12 @@
 # playbook-svc
 
-Provides simple filesystem-backed playbook definitions and trigger endpoint.
+Stores incident-scoped playbooks and allows manual runs that emit in-app notifications.
 
 ## Routes
-- `GET /playbooks` — list playbooks (id, name, summary)
-- `POST /playbooks/:id/trigger` — body `{ incidentId, operationCode?, message?, severity? }`
+- `GET /incidents/:incidentId/playbooks` — list playbooks for an incident
+- `POST /incidents/:incidentId/playbooks` — create `{ name, json }`
+- `GET /playbooks/:id` — fetch playbook JSON
+- `POST /playbooks/:id/run` — body `{ incidentId, message?, severity? }`
 
 ## Env Vars
 - `PORT` (default 3005)
@@ -12,5 +14,5 @@ Provides simple filesystem-backed playbook definitions and trigger endpoint.
 - `ORG_CODE` organization code
 
 ## Notes
-- Reads definitions from `/playbooks/*.json` mounted read-only.
-- Triggers emit `NOTIFY tactix_events` with `type: PLAYBOOK_NOTIFY` for realtime fan-out.
+- Playbooks are stored in Postgres (`playbooks`, `playbook_runs` tables).
+- Runs emit `NOTIFY tactix_events` with `type: PLAYBOOK_NOTIFY` for realtime fan-out.
