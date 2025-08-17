@@ -1,19 +1,32 @@
-import EngChatPanel from './src/components/EngChatPanel.tsx';
 import MainLayout from './src/components/MainLayout.tsx';
 import IncidentDashboard from './src/pages/IncidentDashboard.tsx';
 import IncidentPage from './src/pages/IncidentPage.tsx';
+import OperationsList from './src/pages/OperationsList.tsx';
+import OperationOverview from './src/pages/OperationOverview.tsx';
+import SchedulePage from './src/pages/SchedulePage.tsx';
+import PlaybookPage from './src/pages/PlaybookPage.tsx';
+import OrdersList from './src/pages/OrdersList.tsx';
+import OrderDetail from './src/pages/OrderDetail.tsx';
+import EngRooms from './src/pages/EngRooms.tsx';
+import EngRoom from './src/pages/EngRoom.tsx';
+import SettingsProfile from './src/pages/SettingsProfile.tsx';
+import SettingsAdmin from './src/pages/SettingsAdmin.tsx';
+import NotFound from './src/pages/NotFound.tsx';
+import ErrorPage from './src/pages/ErrorPage.tsx';
 import { notifyStore } from './src/lib/notify.ts';
 import i18n from './src/i18n/index.ts';
+import Button from './src/design/Button.tsx';
 
 const { useEffect, useState } = React;
-const { I18nextProvider } = ReactI18next;
-const { BrowserRouter, Routes, Route, Navigate } = ReactRouterDOM;
+const { I18nextProvider, useTranslation } = ReactI18next;
+const { BrowserRouter, Routes, Route, Navigate, useNavigate } = ReactRouterDOM;
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [refreshToken, setRefreshToken] = useState(
     localStorage.getItem('refreshToken') || ''
   );
+  const ENG_CHAT_ENABLED = (window as any).ENV?.ENG_CHAT_ENABLED !== false;
 
   function handleLogin(data) {
     setToken(data.token);
@@ -91,16 +104,32 @@ function App() {
               </Protected>
             }
           >
-            <Route index element={<IncidentDashboard token={token} />} />
+            <Route index element={<Navigate to="/operations" replace />} />
+            <Route path="operations" element={<OperationsList />} />
+            <Route path="operations/:opId/overview" element={<OperationOverview />} />
+            <Route path="incidents" element={<IncidentDashboard token={token} />} />
             <Route
-              path="incidents/:incidentId"
+              path="incidents/:incidentId/workspace"
               element={<IncidentPage token={token} />}
             />
-            <Route path="chat" element={<EngChatPanel token={token} />} />
-            <Route path="playbooks" element={<div className="text-sm">Playbooks</div>} />
-            <Route path="orders" element={<div className="text-sm">Orders</div>} />
-            <Route path="schedule" element={<div className="text-sm">Schedule</div>} />
-            <Route path="notifications" element={<div className="text-sm">Notifications</div>} />
+            <Route
+              path="operations/:opId/schedule"
+              element={<SchedulePage />}
+            />
+            <Route path="incidents/:incidentId/playbook" element={<PlaybookPage />} />
+            <Route path="playbooks/:playbookId" element={<PlaybookPage />} />
+            <Route path="orders" element={<OrdersList />} />
+            <Route path="orders/:orderId" element={<OrderDetail />} />
+            {ENG_CHAT_ENABLED && (
+              <>
+                <Route path="eng" element={<EngRooms />} />
+                <Route path="eng/rooms/:roomId" element={<EngRoom />} />
+              </>
+            )}
+            <Route path="settings/profile" element={<SettingsProfile />} />
+            <Route path="settings/admin" element={<SettingsAdmin />} />
+            <Route path="error" element={<ErrorPage />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </BrowserRouter>
@@ -109,6 +138,8 @@ function App() {
 }
 
 function Login({ onLogin }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -121,32 +152,35 @@ function Login({ onLogin }) {
       body: JSON.stringify({ username, password }),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(onLogin)
-      .catch(() => setError('Login failed'));
+      .then((data) => {
+        onLogin(data);
+        navigate('/operations');
+      })
+      .catch(() => setError(t('common.error')));
   };
 
   return (
     <form onSubmit={submit} className="space-y-2 max-w-sm m-auto p-4">
+      <h2 className="text-lg font-semibold text-center">
+        {t('auth.login.title')}
+      </h2>
       {error && <div className="text-red-600 text-sm">{error}</div>}
       <input
         className="border rounded p-1 w-full"
-        placeholder="username"
+        placeholder={t('auth.login.upn')}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
       />
       <input
         className="border rounded p-1 w-full"
         type="password"
-        placeholder="password"
+        placeholder={t('auth.login.password')}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button
-        className="bg-blue-600 text-white px-3 py-1 rounded"
-        type="submit"
-      >
-        Login
-      </button>
+      <Button type="submit" className="w-full">
+        {t('auth.login.submit')}
+      </Button>
     </form>
   );
 }

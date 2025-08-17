@@ -14,12 +14,54 @@
     "playbooks": "Playbooks",
     "schedule": "Schedule",
     "chat": "Chat",
+    "operations": "Operations",
+    "eng": "Eng",
+    "settings": "Settings",
     "logout": "Logout"
+  },
+  "header": {
+    "search": { "placeholder": "Search" },
+    "notifications": "Notifications",
+    "language": "Language",
+    "logout": "Logout"
+  },
+  "footer": {
+    "build": "Build"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "upn": "UPN",
+      "password": "Password",
+      "submit": "Sign in"
+    }
   },
   "warlog": {
     "title": "Warlog",
     "empty": "No entries yet.",
     "quickEntryTitle": "Quick Warlog Entry"
+  },
+  "schedule": {
+    "title": "Schedule"
+  },
+  "pb": {
+    "title": "Playbooks"
+  },
+  "orders": {
+    "list": { "title": "Orders" }
+  },
+  "settings": {
+    "profile": "Profile",
+    "admin": "Admin"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "error": "Something went wrong",
+    "notFound": "Not found"
   },
   "chat": {
     "title": "Live Chat",
@@ -30,6 +72,7 @@
   "eng": {
     "title": "Engineering Chat (ENGNET)",
     "unofficial": "Unofficial",
+    "rooms": "Rooms",
     "send": "Send",
     "promote": "Promote to Warlog"
   },

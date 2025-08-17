@@ -14,12 +14,54 @@
     "playbooks": "Playbooks",
     "schedule": "Horaire",
     "chat": "Chat",
+    "operations": "Opérations",
+    "eng": "Eng",
+    "settings": "Paramètres",
     "logout": "Déconnexion"
+  },
+  "header": {
+    "search": { "placeholder": "Recherche" },
+    "notifications": "Notifications",
+    "language": "Langue",
+    "logout": "Déconnexion"
+  },
+  "footer": {
+    "build": "Version"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "upn": "UPN",
+      "password": "Mot de passe",
+      "submit": "Connexion"
+    }
   },
   "warlog": {
     "title": "Journal de guerre",
     "empty": "Aucune entrée pour le moment.",
     "quickEntryTitle": "Entrée rapide au journal"
+  },
+  "schedule": {
+    "title": "Horaire"
+  },
+  "pb": {
+    "title": "Playbooks"
+  },
+  "orders": {
+    "list": { "title": "Ordres" }
+  },
+  "settings": {
+    "profile": "Profil",
+    "admin": "Admin"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "error": "Une erreur s'est produite",
+    "notFound": "Introuvable"
   },
   "chat": {
     "title": "Chat en direct",
@@ -30,6 +72,7 @@
   "eng": {
     "title": "Chat d'ingénierie (ENGNET)",
     "unofficial": "Non officiel",
+    "rooms": "Salles",
     "send": "Envoyer",
     "promote": "Promouvoir au journal"
   },
