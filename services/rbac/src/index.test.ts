@@ -1,3 +1,4 @@
+import { test, expect } from 'vitest';
 import { computeEffective, can } from './index';
 
 test('AD-derived VIEWER via suffix match', () => {
