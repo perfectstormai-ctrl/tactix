@@ -59,9 +59,26 @@ export function can(roles: Role[] | Set<Role>, action: Action): boolean {
   return ACTION_MAP[action].some(r => have.has(r));
 }
 
-// Placeholder assign & check — to be replaced with real DB-backed logic.
-export async function assignRole(_userUpn: string, _role: Role, _operationId: string, _byUpn: string): Promise<void> {
-  console.log('[RBAC] TODO assignRole', { _userUpn, _role, _operationId, _byUpn });
+// In-memory assignment store; replace with persistent DB logic in services.
+const assignments = new Map<string, Role>();
+
+export async function assignRole(
+  userUpn: string,
+  role: Role,
+  operationId: string,
+  _byUpn: string,
+): Promise<void> {
+  const key = `${userUpn.toLowerCase()}::${operationId}`;
+  assignments.set(key, role);
+}
+
+export async function getAssignedRole(userUpn: string, operationId: string): Promise<Role | null> {
+  const key = `${userUpn.toLowerCase()}::${operationId}`;
+  return assignments.get(key) ?? null;
+}
+
+export function clearAssignments(): void {
+  assignments.clear();
 }
 
 export async function checkPermission(eff: EffectiveResult, action: Action): Promise<boolean> {
