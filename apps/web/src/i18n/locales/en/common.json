@@ -1,0 +1,7 @@
+{
+  "security": {
+    "zeroTrust": "Zero-Trust (Preview)",
+    "locked": "Locked by environment",
+    "banner": "Zero-Trust enforced"
+  }
+}
