@@ -28,6 +28,9 @@
   "footer": {
     "build": "Build"
   },
+  "home": {
+    "welcome": "Welcome to TACTIX"
+  },
   "auth": {
     "login": {
       "title": "Sign in",

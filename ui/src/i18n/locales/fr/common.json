@@ -28,6 +28,9 @@
   "footer": {
     "build": "Version"
   },
+  "home": {
+    "welcome": "Bienvenue dans TACTIX"
+  },
   "auth": {
     "login": {
       "title": "Connexion",
